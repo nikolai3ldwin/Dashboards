@@ -1,6 +1,9 @@
 import pandas as pd
 import streamlit as st
 import numpy as np
+import altair as alt
+from PIL import Image
+from math import radians, cos, sin, asin, sqrt
 
 # Define the fake data frames
 df_ships = pd.DataFrame({
@@ -25,7 +28,36 @@ df_weapons = pd.DataFrame({
     'Country': ['USA', 'USA', 'USA', 'USA']
 })
 
-# Streamlit app code
+df_ship_routes = pd.DataFrame({
+    'Ship_Name': ['Sea Warrior', 'Liberty', 'Freedom', 'Independence', 'Defender'],
+    'Load_Location': ['Pearl Harbor', 'San Diego', 'Norfolk', 'Yokosuka', 'Guam'],
+    'Load_Latitude': [21.3442, 32.7157, 36.8508, 35.2815, 13.444],
+    'Load_Longitude': [-157.974, -117.161, -76.2859, 139.672, 144.793],
+    'Target_Location': ['Tokyo', 'Sydney', 'Busan', 'Manila', 'Taipei'],
+    'Target_Latitude': [35.6895, -33.8688, 35.1028, 14.5995, 25.0330],
+    'Target_Longitude': [139.6917, 151.2093, 129.0416, 120.9842, 121.5654],
+    'Current_Location': ['Pacific Ocean', 'Pacific Ocean', 'Atlantic Ocean', 'Pacific Ocean', 'Pacific Ocean'],
+    'Current_Latitude': [25.0, 20.0, 30.0, 40.0, 15.0],
+    'Current_Longitude': [-160.0, -140.0, -70.0, 160.0, 150.0],
+    'Progress': [0.3, 0.6, 0.8, 0.2, 0.5]
+})
+
+
+def haversine(lon1, lat1, lon2, lat2):
+    """
+    Calculate the great circle distance between two points
+    on the earth (specified in decimal degrees)
+    """
+    # convert decimal degrees to radians
+    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+
+    # haversine formula
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    c = 2 * asin(sqrt(a))
+    r = 6371  # Radius of earth in kilometers
+    return c * r
 
 
 def main():
@@ -115,6 +147,63 @@ def main():
     # Display the combined dataframe
     st.write('### Combined Weapons Table')
     st.write(df_combined)
+
+    # Create a bar chart for weapon space allocation
+    weapon_space_data = pd.DataFrame({
+        'Weapon Type': df_combined.index.tolist() + ['Total Space Left'],
+        'Total Space': df_combined['Total Space'].tolist() + [total_space_left]
+    })
+
+    bar_chart = alt.Chart(weapon_space_data).mark_bar().encode(
+        x='Weapon Type',
+        y='Total Space',
+        tooltip=['Weapon Type', 'Total Space']
+    ).properties(
+        width=600,
+        height=400,
+        title='Weapon Space Allocation'
+    )
+
+    st.altair_chart(bar_chart, use_container_width=True)
+
+    # Get the selected ship's route information
+    ship_route = df_ship_routes[df_ship_routes['Ship_Name']
+                                == selected_ship].squeeze()
+
+    # Calculate the total distance of the route
+    start_lat, start_lon = ship_route['Load_Latitude'], ship_route['Load_Longitude']
+    end_lat, end_lon = ship_route['Target_Latitude'], ship_route['Target_Longitude']
+    total_distance = haversine(start_lon, start_lat, end_lon, end_lat)
+
+    # Create a progress bar chart
+    progress_data = pd.DataFrame({
+        'Ship': [selected_ship],
+        'Progress': [ship_route['Progress']]
+    })
+
+    progress_bar = alt.Chart(progress_data).mark_bar().encode(
+        x='Ship',
+        x2='Progress',
+        y=alt.Y('Progress:Q', axis=None),
+        tooltip=['Ship', alt.Tooltip('Progress', format='.2f')]
+    ).properties(
+        width=600,
+        height=50,
+        title='Journey Progress'
+    )
+
+    # Add the ship image to the chart
+    ship_image = Image.open("C:/Users/baldw/Downloads/Boat Icon.png")
+    ship_x = int(ship_route['Progress'] * 600)
+    progress_bar = progress_bar.mark_image(
+        url='data:image/png;base64,' + ship_image.tobytes().decode('latin1'),
+        x=ship_x,
+        y=25,
+        width=50,
+        height=50
+    )
+
+    st.altair_chart(progress_bar, use_container_width=True)
 
 
 if __name__ == '__main__':
