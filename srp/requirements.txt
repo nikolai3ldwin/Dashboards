@@ -2,6 +2,7 @@ altair==5.2.0
 asttokens==2.4.1
 attrs==23.2.0
 blinker==1.7.0
+branca==0.7.1
 cachetools==5.3.3
 certifi==2024.2.2
 charset-normalizer==3.3.2
@@ -12,6 +13,7 @@ debugpy==1.8.1
 decorator==5.1.1
 exceptiongroup==1.2.0
 executing==2.0.1
+folium==0.16.0
 gitdb==4.0.11
 GitPython==3.1.42
 idna==3.6
@@ -57,6 +59,7 @@ six==1.16.0
 smmap==5.0.1
 stack-data==0.6.3
 streamlit==1.32.0
+streamlit-folium==0.18.0
 tenacity==8.2.3
 toml==0.10.2
 toolz==0.12.1
@@ -67,3 +70,4 @@ tzdata==2024.1
 urllib3==2.2.1
 watchdog==4.0.0
 wcwidth==0.2.13
+xyzservices==2024.4.0
