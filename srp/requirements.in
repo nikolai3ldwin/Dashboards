@@ -1,4 +1,6 @@
+folium
 numpy
 pandas
 pyside6
 streamlit
+streamlit-folium
