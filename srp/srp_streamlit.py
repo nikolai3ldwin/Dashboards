@@ -1,5 +1,11 @@
 import pandas as pd
+
 import streamlit as st
+# BEGIN edit here -----------------------------------
+import folium
+from streamlit_folium import folium_static
+# END edit here -------------------------------------
+
 import numpy as np
 import altair as alt
 from PIL import Image
@@ -59,7 +65,24 @@ def haversine(lon1, lat1, lon2, lat2):
     r = 6371  # Radius of earth in kilometers
     return c * r
 
+# BEGIN edit here ----------------------------------------------------------------------------------------------------
+def create_map(df_ship_routes):
+    m = folium.Map()
 
+    for _, row in df_ship_routes.iterrows():
+        start_coords = [row['Load_Latitude'], row['Load_Longitude']]
+        end_coords = [row['Target_Latitude'], row['Target_Longitude']]
+        current_coords = [row['Current_Latitude'], row['Current_Longitude']]
+
+        folium.PolyLine([start_coords, current_coords, end_coords],
+                        color='red', weight=2.5, opacity=1, geodesic=True).add_to(m)
+        folium.Marker(start_coords, tooltip=row['Load_Location']).add_to(m)
+        folium.Marker(current_coords,
+                      tooltip=row['Current_Location']).add_to(m)
+        folium.Marker(end_coords, tooltip=row['Target_Location']).add_to(m)
+
+    return m
+# STOP edit here ------------------------------------------------------------------------------------------------------
 def main():
     st.title('Ship Weapon Loader Dashboard')
 
@@ -175,6 +198,16 @@ def main():
     end_lat, end_lon = ship_route['Target_Latitude'], ship_route['Target_Longitude']
     total_distance = haversine(start_lon, start_lat, end_lon, end_lat)
 
+# BEGIN edit here ----------------------------------------------------------------------------------------------------
+# this section called the create_map function above main
+# needs edits to finish including streamlit-folium
+    # Render the map
+    m = create_map(df_ship_routes)
+    folium_static(m)
+# END edit here ------------------------------------------------------------------------------------------------------
+# BEGIN edit here ----------------------------------------------------------------------------------------------------
+# needs edits to get the progress bar chart to display
+# needs edits to get the paper boat image to display
     # Create a progress bar chart
     progress_data = pd.DataFrame({
         'Ship': [selected_ship],
@@ -204,6 +237,7 @@ def main():
     )
 
     st.altair_chart(progress_bar, use_container_width=True)
+# END edit here ------------------------------------------------------------------------------------------------------
 
 
 if __name__ == '__main__':
