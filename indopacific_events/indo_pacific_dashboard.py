@@ -1,5 +1,3 @@
-# "C:\Users\baldw\Documents\python_projects\indo_pacific_dashboard.py"
-
 import streamlit as st
 import feedparser
 import requests
@@ -12,7 +10,7 @@ import os
 # default img if unable to get image from RSS feed
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-FILLER_IMAGE_PATH = os.path.join(SCRIPT_DIR, "C:/Users/baldw/Documents/python_projects/indo_pacific_filler_pic.jfif")
+FILLER_IMAGE_PATH = os.path.join(SCRIPT_DIR, "indo_pacific_filler_pic.jfif")
 
 # Function to fetch and parse RSS feeds
 
