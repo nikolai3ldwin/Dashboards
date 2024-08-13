@@ -91,12 +91,12 @@ for feed_url in rss_feeds:
             st.write(f"Date: {date}")
 
             if 'summary' in entry:
-                st.write(entry.summary)
+                st.write(f"Summary: {entry.summary}")
             else:
                 st.write("Summary not available")
 
-            st.write("Generated Summary:")
-            st.write(generate_summary(entry.get('summary', '')))
+            #st.write("Generated Summary:")
+            #st.write(generate_summary(entry.get('summary', '')))
 
             importance = rate_importance()
             st.write(
