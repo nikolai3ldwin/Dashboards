@@ -2,3 +2,5 @@ streamlit
 feedparser
 requests
 pillow
+beautifulsoup4
+nltk
