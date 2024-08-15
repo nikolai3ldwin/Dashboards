@@ -3,4 +3,4 @@ feedparser
 requests
 pillow
 beautifulsoup4
-nltk
+nltk==3.8.1
