@@ -193,4 +193,4 @@ for article in all_articles:
 
 # Add a footer
 st.markdown(
-    "Dashboard created with Streamlit - Data sourced from various RSS feeds - By SGT Nikolai Baldwin")
+    "Dashboard created with Streamlit - Data sourced from various RSS feeds - By Nikolai Baldwin")
