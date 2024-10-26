@@ -1,24 +1,7 @@
 import streamlit as st
-
-# Install required packages if not present
-import subprocess
-import sys
-
-def install_packages():
-    packages = ['folium', 'streamlit-folium', 'mgrs']
-    for package in packages:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-
-try:
-    import folium
-    from streamlit_folium import folium_static
-    from mgrs import MGRS
-except ImportError:
-    install_packages()
-    import folium
-    from streamlit_folium import folium_static
-    from mgrs import MGRS
-
+import folium
+from streamlit_folium import folium_static
+from mgrs import MGRS
 import pandas as pd
 import numpy as np
 
