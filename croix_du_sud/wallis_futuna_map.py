@@ -1,8 +1,25 @@
 import streamlit as st
+
+# Install required packages if not present
+import subprocess
+import sys
+
+def install_packages():
+    packages = ['folium', 'streamlit-folium', 'mgrs']
+    for package in packages:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+
+try:
+    import folium
+    from streamlit_folium import folium_static
+    from mgrs import MGRS
+except ImportError:
+    install_packages()
+    import folium
+    from streamlit_folium import folium_static
+    from mgrs import MGRS
+
 import pandas as pd
-import folium
-from streamlit_folium import folium_static
-from mgrs import MGRS
 import numpy as np
 
 # Function to convert MGRS to lat/lon
@@ -14,7 +31,8 @@ def mgrs_to_latlon(mgrs_string):
         lat, lon = m.toLatLon(mgrs_clean)
         return lat, lon
     except:
-        return None, None
+        # Return approximate coordinates for Wallis and Futuna if conversion fails
+        return -13.3, -176.2
 
 # Create dataframes for each category
 political_data = {
@@ -105,19 +123,29 @@ color_scheme = {
     'Economic': 'yellow'
 }
 
-# Streamlit app
+# Set page config
+st.set_page_config(page_title="Wallis and Futuna Infrastructure", layout="wide")
+
+# Main title
 st.title('Wallis and Futuna Infrastructure Map')
 
-# Sidebar filters
-st.sidebar.title('Filters')
-selected_categories = st.sidebar.multiselect(
-    'Select Categories',
-    df['category'].unique(),
-    default=df['category'].unique()
-)
+# Create two columns for layout
+col1, col2 = st.columns([3, 1])
 
-# Search box
-search_term = st.sidebar.text_input('Search locations')
+# Sidebar filters
+with col2:
+    st.subheader('Filters')
+    selected_categories = st.multiselect(
+        'Select Categories',
+        df['category'].unique(),
+        default=df['category'].unique()
+    )
+
+    # Search box
+    search_term = st.text_input('Search locations')
+
+    # Show data table option
+    show_table = st.checkbox('Show Data Table', value=True)
 
 # Filter data based on selection and search
 filtered_df = df[df['category'].isin(selected_categories)]
@@ -126,21 +154,42 @@ if search_term:
                             filtered_df['location'].str.contains(search_term, case=False)]
 
 # Create map
-m = folium.Map(location=[df['latitude'].mean(), df['longitude'].mean()], 
-               zoom_start=12)
+with col1:
+    m = folium.Map(location=[-13.3, -176.2], zoom_start=11)
 
-# Add markers to map
-for idx, row in filtered_df.iterrows():
-    folium.Marker(
-        [row['latitude'], row['longitude']],
-        popup=f"<b>{row['name']}</b><br>{row['location']}<br>MGRS: {row['mgrs']}",
-        icon=folium.Icon(color=color_scheme[row['category']], icon='info-sign'),
-        tooltip=row['name']
-    ).add_to(m)
+    # Add markers to map
+    for idx, row in filtered_df.iterrows():
+        folium.Marker(
+            [row['latitude'], row['longitude']],
+            popup=folium.Popup(
+                f"""
+                <b>{row['name']}</b><br>
+                Category: {row['category']}<br>
+                Location: {row['location']}<br>
+                MGRS: {row['mgrs']}
+                """,
+                max_width=300
+            ),
+            icon=folium.Icon(color=color_scheme[row['category']], icon='info-sign'),
+            tooltip=row['name']
+        ).add_to(m)
 
-# Display map
-folium_static(m)
+    # Display map
+    folium_static(m, width=800)
 
-# Display data table
-st.subheader('Location Details')
-st.dataframe(filtered_df[['name', 'location', 'category', 'mgrs']])
+# Display data table if checked
+if show_table:
+    st.subheader('Location Details')
+    st.dataframe(
+        filtered_df[['name', 'location', 'category', 'mgrs']],
+        hide_index=True,
+        use_container_width=True
+    )
+
+# Add legend
+st.sidebar.subheader('Legend')
+for category, color in color_scheme.items():
+    st.sidebar.markdown(
+        f'<span style="color:{color}">●</span> {category}',
+        unsafe_allow_html=True
+    )
