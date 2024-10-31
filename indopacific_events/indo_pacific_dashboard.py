@@ -13,6 +13,7 @@ from collections import Counter
 import ssl
 from textblob import TextBlob
 import pandas as pd
+import time
 
 from importance_keywords import IMPORTANT_KEYWORDS
 
@@ -49,35 +50,52 @@ rss_feeds = [
     ("https://pidp.eastwestcenter.org/feed/", "Pacific Islands Development Program")
 ]
 
-# Function to fetch and parse RSS feeds
+# Function to fetch and parse RSS feeds 
+# modified from the previous version
+# fetch_rss_feed function with better error handling and serialization
 @st.cache_data(ttl=3600)
 def fetch_rss_feed(url):
-    return feedparser.parse(url)
+    try:
+        feed = feedparser.parse(url)
+        # Convert to a more easily serializable format
+        entries = []
+        for entry in feed.entries:
+            serialized_entry = {
+                'title': str(entry.get('title', '')),
+                'link': str(entry.get('link', '')),
+                'summary': str(entry.get('summary', '')),
+                'published_parsed': entry.get('published_parsed', None),
+                'media_content': [{'url': m.get('url', '')} for m in entry.get('media_content', [])] if hasattr(entry, 'media_content') else []
+            }
+            entries.append(serialized_entry)
+        return {'entries': entries, 'status': feed.get('status', 0)}
+    except Exception as e:
+        st.warning(f"Error fetching feed from {url}: {str(e)}")
+        return {'entries': [], 'status': 0}
 
 # Function to get image from URL
 @st.cache_data(ttl=3600)
 def get_image(url):
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=5)
         img = Image.open(BytesIO(response.content))
         return img
     except:
         return Image.open(FILLER_IMAGE_PATH)
 
-# Modified importance rating function to use 1-5 scale
 def rate_importance(content, tags):
     score = 0
     content_lower = content.lower()
     
     # Check for keywords in content
     for keyword, weight in IMPORTANT_KEYWORDS.items():
-        if keyword in content_lower:
+        if keyword.lower() in content_lower:
             score += weight
     
     # Check for keywords in tags
     for tag in tags:
-        if tag in IMPORTANT_KEYWORDS:
-            score += IMPORTANT_KEYWORDS[tag]
+        if tag.lower() in IMPORTANT_KEYWORDS:
+            score += IMPORTANT_KEYWORDS[tag.lower()]
     
     # Additional weight for specific scenarios
     if any(word in content_lower for word in ['emergency', 'urgent', 'breaking']):
@@ -92,35 +110,47 @@ def rate_importance(content, tags):
     return normalized_score
 
 def generate_tags(content, num_tags=5):
-    text = BeautifulSoup(content, "html.parser").get_text()
-    stop_words = set(stopwords.words('english'))
-    words = [word.lower() for word in word_tokenize(text) 
-             if word.isalnum() and word.lower() not in stop_words]
-    return [word for word, _ in Counter(words).most_common(num_tags)]
+    try:
+        text = BeautifulSoup(content, "html.parser").get_text()
+        stop_words = set(stopwords.words('english'))
+        words = [word.lower() for word in word_tokenize(text) 
+                if word.isalnum() and word.lower() not in stop_words]
+        return [word for word, _ in Counter(words).most_common(num_tags)]
+    except Exception as e:
+        st.warning(f"Error generating tags: {str(e)}")
+        return []
 
 def generate_summary(content, num_sentences=3):
-    text = BeautifulSoup(content, "html.parser").get_text()
-    sentences = sent_tokenize(text)
-    return ' '.join(sentences[:num_sentences])
+    try:
+        text = BeautifulSoup(content, "html.parser").get_text()
+        sentences = sent_tokenize(text)
+        return ' '.join(sentences[:num_sentences])
+    except Exception as e:
+        st.warning(f"Error generating summary: {str(e)}")
+        return content[:200] + "..."
 
 def analyze_sentiment(text):
-    blob = TextBlob(text)
-    
-    # Get sentiment scores
-    sentiment_scores = {
-        'US': 0,
-        'China': 0,
-        'overall': blob.sentiment.polarity
-    }
-    
-    # Analyze sentiment towards specific countries
-    for sentence in blob.sentences:
-        if 'US' in sentence.string or 'United States' in sentence.string:
-            sentiment_scores['US'] += sentence.sentiment.polarity
-        if 'China' in sentence.string:
-            sentiment_scores['China'] += sentence.sentiment.polarity
-    
-    return sentiment_scores
+    try:
+        blob = TextBlob(text)
+        
+        # Get sentiment scores
+        sentiment_scores = {
+            'US': 0.0,
+            'China': 0.0,
+            'overall': float(blob.sentiment.polarity)
+        }
+        
+        # Analyze sentiment towards specific countries
+        for sentence in blob.sentences:
+            if 'US' in str(sentence) or 'United States' in str(sentence):
+                sentiment_scores['US'] += float(sentence.sentiment.polarity)
+            if 'China' in str(sentence):
+                sentiment_scores['China'] += float(sentence.sentiment.polarity)
+        
+        return sentiment_scores
+    except Exception as e:
+        st.warning(f"Error analyzing sentiment: {str(e)}")
+        return {'US': 0.0, 'China': 0.0, 'overall': 0.0}
 
 # Main Streamlit app
 st.set_page_config(page_title="Indo-Pacific Current Events", layout="wide")
@@ -155,43 +185,55 @@ with st.spinner('Loading articles...'):
     for feed_url, source_name in rss_feeds:
         if not selected_sources or source_name in selected_sources:
             feed = fetch_rss_feed(feed_url)
-            for entry in feed.entries:
-                content = entry.get('summary', '')
+            
+            if not feed or 'entries' not in feed:
+                st.warning(f"Could not fetch feed from {source_name}")
+                continue
                 
-                # Check country relevance
-                if selected_country != 'All':
-                    if selected_country.lower() not in content.lower():
+            for entry in feed['entries']:
+                try:
+                    content = entry.get('summary', '')
+                    
+                    # Check country relevance
+                    if selected_country != 'All':
+                        if selected_country.lower() not in content.lower():
+                            continue
+                    
+                    tags = generate_tags(content)
+                    summary = generate_summary(content)
+                    importance = rate_importance(content, tags)
+                    sentiment = analyze_sentiment(content)
+                    
+                    # Apply importance filter
+                    if importance < min_importance:
                         continue
-                
-                tags = generate_tags(content)
-                summary = generate_summary(content)
-                importance = rate_importance(content, tags)
-                sentiment = analyze_sentiment(content)
-                
-                # Apply importance filter
-                if importance < min_importance:
+                    
+                    # Apply sentiment filter
+                    if sentiment_filter != 'All':
+                        if sentiment_filter == 'Positive towards US' and sentiment['US'] <= 0:
+                            continue
+                        if sentiment_filter == 'Negative towards US' and sentiment['US'] >= 0:
+                            continue
+                    
+                    if not search_term or search_term.lower() in str(content).lower():
+                        # Convert time tuple to datetime safely
+                        pub_date = datetime.datetime(*entry['published_parsed'][:6]) if entry.get('published_parsed') else datetime.datetime.now()
+                        
+                        article = {
+                            'title': entry['title'],
+                            'link': entry['link'],
+                            'date': pub_date,
+                            'summary': summary,
+                            'tags': tags,
+                            'importance': importance,
+                            'sentiment': sentiment,
+                            'source': source_name,
+                            'image_url': entry['media_content'][0]['url'] if entry.get('media_content') and entry['media_content'] else None
+                        }
+                        all_articles.append(article)
+                except Exception as e:
+                    st.warning(f"Error processing article from {source_name}: {str(e)}")
                     continue
-                
-                # Apply sentiment filter
-                if sentiment_filter != 'All':
-                    if sentiment_filter == 'Positive towards US' and sentiment['US'] <= 0:
-                        continue
-                    if sentiment_filter == 'Negative towards US' and sentiment['US'] >= 0:
-                        continue
-                
-                if not search_term or search_term.lower() in str(content).lower():
-                    article = {
-                        'title': entry.title,
-                        'link': entry.link,
-                        'date': datetime.datetime(*entry.published_parsed[:6]),
-                        'summary': summary,
-                        'tags': tags,
-                        'importance': importance,
-                        'sentiment': sentiment,
-                        'source': source_name,
-                        'image_url': entry.media_content[0]['url'] if 'media_content' in entry else None
-                    }
-                    all_articles.append(article)
 
     # Sort articles
     if sort_by == "Date":
