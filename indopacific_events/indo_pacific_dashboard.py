@@ -47,9 +47,9 @@ rss_feeds = [
     ("https://www.eastasiaforum.org/feed/", "East Asia Forum"),
     ("https://www.lowyinstitute.org/the-interpreter/rss.xml", "The Interpreter"),
     # Updated PINA feed URL with alternative
-    ("https://pina.com.fj/feed/", "Pacific Islands News Association"),
-    ("https://www.pina.com.fj/?format=feed&type=rss", "Pacific Islands News Association (Alt)"),
-    ("https://pidp.eastwestcenter.org/feed/", "Pacific Islands Development Program")
+    #("https://pina.com.fj/feed/", "Pacific Islands News Association"),   ---------------------- These have issues
+    #("https://www.pina.com.fj/?format=feed&type=rss", "Pacific Islands News Association (Alt)"),
+    #("https://pidp.eastwestcenter.org/feed/", "Pacific Islands Development Program")
 ]
 
 # Modified fetch_rss_feed function with better error handling and retry mechanism
