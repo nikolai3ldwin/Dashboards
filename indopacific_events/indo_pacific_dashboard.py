@@ -40,38 +40,65 @@ download_nltk_data()
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 FILLER_IMAGE_PATH = os.path.join(SCRIPT_DIR, "indo_pacific_filler_pic.jfif")
 
-# RSS feeds including specific sources for New Caledonia and Wallis and Futuna
+# Updated RSS feeds with alternative sources
 rss_feeds = [
     ("https://www.rnz.co.nz/rss/pacific.xml", "RNZ Pacific"),
     ("https://thediplomat.com/feed/", "The Diplomat"),
     ("https://www.eastasiaforum.org/feed/", "East Asia Forum"),
     ("https://www.lowyinstitute.org/the-interpreter/rss.xml", "The Interpreter"),
-    ("https://www.pina.com.fj/feed/", "Pacific Islands News Association"),
+    # Updated PINA feed URL with alternative
+    ("https://pina.com.fj/feed/", "Pacific Islands News Association"),
+    ("https://www.pina.com.fj/?format=feed&type=rss", "Pacific Islands News Association (Alt)"),
     ("https://pidp.eastwestcenter.org/feed/", "Pacific Islands Development Program")
 ]
 
-# Function to fetch and parse RSS feeds 
-# modified from the previous version
-# fetch_rss_feed function with better error handling and serialization
+# Modified fetch_rss_feed function with better error handling and retry mechanism
 @st.cache_data(ttl=3600)
 def fetch_rss_feed(url):
-    try:
-        feed = feedparser.parse(url)
-        # Convert to a more easily serializable format
-        entries = []
-        for entry in feed.entries:
-            serialized_entry = {
-                'title': str(entry.get('title', '')),
-                'link': str(entry.get('link', '')),
-                'summary': str(entry.get('summary', '')),
-                'published_parsed': entry.get('published_parsed', None),
-                'media_content': [{'url': m.get('url', '')} for m in entry.get('media_content', [])] if hasattr(entry, 'media_content') else []
+    max_retries = 3
+    retry_delay = 1  # seconds
+    
+    for attempt in range(max_retries):
+        try:
+            # Add headers to mimic a browser request
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
             }
-            entries.append(serialized_entry)
-        return {'entries': entries, 'status': feed.get('status', 0)}
-    except Exception as e:
-        st.warning(f"Error fetching feed from {url}: {str(e)}")
-        return {'entries': [], 'status': 0}
+            
+            # Use requests to get the feed content first
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()  # Raise an exception for bad status codes
+            
+            feed = feedparser.parse(response.content)
+            
+            # Check if feed was successfully parsed
+            if feed.get('status', 0) != 200 and feed.get('entries', []) == []:
+                raise Exception(f"Failed to parse feed: Status {feed.get('status', 'unknown')}")
+            
+            # Convert to a more easily serializable format
+            entries = []
+            for entry in feed.entries:
+                serialized_entry = {
+                    'title': str(entry.get('title', '')),
+                    'link': str(entry.get('link', '')),
+                    'summary': str(entry.get('summary', '')),
+                    'published_parsed': entry.get('published_parsed', None),
+                    'media_content': [{'url': m.get('url', '')} for m in entry.get('media_content', [])] if hasattr(entry, 'media_content') else []
+                }
+                entries.append(serialized_entry)
+            
+            if not entries:
+                raise Exception("No entries found in feed")
+                
+            return {'entries': entries, 'status': feed.get('status', 0)}
+            
+        except Exception as e:
+            if attempt < max_retries - 1:
+                time.sleep(retry_delay)
+                continue
+            else:
+                st.warning(f"Error fetching feed from {url} after {max_retries} attempts: {str(e)}")
+                return {'entries': [], 'status': 0}
 
 # Function to get image from URL
 @st.cache_data(ttl=3600)
