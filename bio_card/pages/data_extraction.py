@@ -11,11 +11,11 @@ def show_data_extraction_page():
     
     with col1:
         st.subheader("Upload Document")
-        uploaded_file = st.file_uploader("Choose a file", type=["pdf", "docx", "txt"], accept_multiple_files=True)
+        uploaded_files = st.file_uploader("Choose a file", type=["pdf", "docx", "txt"], accept_multiple_files=True)
         
         # Process files only if files were uploaded
-        if uploaded_file and len(uploaded_file) > 0:
-            for file in uploaded_file:
+        if uploaded_files:  # Check if the list is not empty
+            for file in uploaded_files:
                 # Extract text from document
                 st.info(f"Processing {file.name}...")
                 extracted_text = extract_text(file)
