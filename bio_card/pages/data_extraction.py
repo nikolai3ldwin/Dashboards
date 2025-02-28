@@ -11,7 +11,7 @@ def show_data_extraction_page():
     
     with col1:
         st.subheader("Upload Document")
-        uploaded_file = st.file_uploader("Choose a file", type=["pdf", "docx", "txt"])
+        uploaded_file = st.file_uploader("Choose a file", type=["pdf", "docx", "txt", "csv", "xlsx"], accept_multiple_files=True)
         
         if uploaded_file is not None:
             # Extract text from document
