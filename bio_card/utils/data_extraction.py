@@ -1,30 +1,12 @@
 import re
 import nltk
 from nltk.tokenize import sent_tokenize
-import spacy
 
 # Download necessary NLTK resources
 try:
     nltk.data.find('tokenizers/punkt')
 except LookupError:
     nltk.download('punkt')
-
-# Initialize spaCy with error handling
-try:
-    nlp = spacy.load("en_core_web_sm")
-except OSError:
-    # If the model isn't installed, provide a more graceful error
-    print("The spaCy model 'en_core_web_sm' is not installed. Installing now...")
-    try:
-        import subprocess
-        subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"], check=True)
-        nlp = spacy.load("en_core_web_sm")
-        print("Model installed successfully.")
-    except Exception as e:
-        print(f"Failed to install spaCy model: {e}")
-        # Fallback to a simple NLP object that won't cause crashes
-        nlp = spacy.blank("en")
-        print("Using blank model as fallback. Entity extraction will be limited.")
 
 # Define regex patterns for various information types
 PATTERNS = {
@@ -43,7 +25,7 @@ PATTERNS = {
 
 def extract_entities(text):
     """
-    Extract named entities from text using spaCy.
+    Simple entity extraction using regex patterns instead of spaCy.
     
     Args:
         text (str): The text to analyze
@@ -51,7 +33,7 @@ def extract_entities(text):
     Returns:
         dict: Dictionary of entity types and their values
     """
-    # Create default empty structure in case of errors
+    # Create a basic entity structure
     entities = {
         'PERSON': [],
         'ORG': [],
@@ -61,16 +43,42 @@ def extract_entities(text):
         'MONEY': []
     }
     
-    try:
-        doc = nlp(text)
-        
-        for ent in doc.ents:
-            if ent.label_ in entities:
-                if ent.text not in entities[ent.label_]:
-                    entities[ent.label_].append(ent.text)
-    except Exception as e:
-        print(f"Error in entity extraction: {e}")
-        # Return the empty entities dictionary if there was an error
+    # Use regex to extract entities
+    # Names (potential PERSON entities)
+    name_pattern = r'\b[A-Z][a-z]+\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b'
+    for match in re.finditer(name_pattern, text):
+        if match.group() not in entities['PERSON']:
+            entities['PERSON'].append(match.group())
+    
+    # Organizations (potential ORG entities)
+    org_pattern = r'\b[A-Z][a-zA-Z]*(?:\s+[A-Z][a-zA-Z]+)+\b'
+    for match in re.finditer(org_pattern, text):
+        # Exclude names that were already caught
+        if match.group() not in entities['PERSON'] and match.group() not in entities['ORG']:
+            entities['ORG'].append(match.group())
+    
+    # Dates
+    date_pattern = r'\b(?:\d{1,2}[-/]\d{1,2}[-/]\d{2,4})|(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2},? \d{4})\b'
+    for match in re.finditer(date_pattern, text):
+        if match.group() not in entities['DATE']:
+            entities['DATE'].append(match.group())
+    
+    # Money amounts
+    money_pattern = r'\$\s?[0-9,]+(?:\.\d{2})?'
+    for match in re.finditer(money_pattern, text):
+        if match.group() not in entities['MONEY']:
+            entities['MONEY'].append(match.group())
+    
+    # Cities, states, countries (GPE)
+    locations = [
+        "New York", "Los Angeles", "Chicago", "San Francisco", "Seattle", "Boston", "Washington DC",
+        "California", "Texas", "Florida", "Illinois", "New York", "Pennsylvania", "Ohio", "Georgia",
+        "USA", "United States", "Canada", "Mexico", "UK", "England", "France", "Germany", "Japan", "China"
+    ]
+    
+    for location in locations:
+        if re.search(r'\b' + re.escape(location) + r'\b', text):
+            entities['GPE'].append(location)
     
     return entities
 
