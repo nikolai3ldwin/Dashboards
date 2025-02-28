@@ -51,6 +51,27 @@ The application will open in your default web browser at http://localhost:8501.
 3. **API Connections**: Connect to external data sources
 4. **Document Repository**: Manage source documents
 
+## Project Structure
+
+```
+investigative-profile-tool/
+├── app.py                 # Main application file
+├── requirements.txt       # Dependencies
+├── README.md              # Documentation
+├── .gitignore             # Git ignore file
+├── utils/
+│   ├── __init__.py
+│   ├── document_processing.py    # Document extraction functions
+│   ├── data_extraction.py        # NLP and regex functions
+│   └── api_connectors.py         # API integration functions
+└── pages/
+    ├── __init__.py
+    ├── data_extraction.py        # Data extraction page
+    ├── profile_builder.py        # Profile builder page
+    ├── api_connections.py        # API connections page
+    └── document_repository.py    # Document repository page
+```
+
 ## Developing & Extending
 
 ### Adding New Extraction Patterns
