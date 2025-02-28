@@ -9,12 +9,22 @@ try:
 except LookupError:
     nltk.download('punkt')
 
-# Try loading spaCy model
+# Initialize spaCy with error handling
 try:
-    nlp = spacy.load("en_core_web_lg")
-except:
-    # This will be handled in the app with proper error messaging
-    pass
+    nlp = spacy.load("en_core_web_sm")
+except OSError:
+    # If the model isn't installed, provide a more graceful error
+    print("The spaCy model 'en_core_web_sm' is not installed. Installing now...")
+    try:
+        import subprocess
+        subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"], check=True)
+        nlp = spacy.load("en_core_web_sm")
+        print("Model installed successfully.")
+    except Exception as e:
+        print(f"Failed to install spaCy model: {e}")
+        # Fallback to a simple NLP object that won't cause crashes
+        nlp = spacy.blank("en")
+        print("Using blank model as fallback. Entity extraction will be limited.")
 
 # Define regex patterns for various information types
 PATTERNS = {
@@ -41,7 +51,7 @@ def extract_entities(text):
     Returns:
         dict: Dictionary of entity types and their values
     """
-    doc = nlp(text)
+    # Create default empty structure in case of errors
     entities = {
         'PERSON': [],
         'ORG': [],
@@ -51,10 +61,16 @@ def extract_entities(text):
         'MONEY': []
     }
     
-    for ent in doc.ents:
-        if ent.label_ in entities:
-            if ent.text not in entities[ent.label_]:
-                entities[ent.label_].append(ent.text)
+    try:
+        doc = nlp(text)
+        
+        for ent in doc.ents:
+            if ent.label_ in entities:
+                if ent.text not in entities[ent.label_]:
+                    entities[ent.label_].append(ent.text)
+    except Exception as e:
+        print(f"Error in entity extraction: {e}")
+        # Return the empty entities dictionary if there was an error
     
     return entities
 
@@ -70,7 +86,11 @@ def extract_regex_matches(text):
     """
     matches = {}
     for key, pattern in PATTERNS.items():
-        matches[key] = list(set(re.findall(pattern, text)))
+        try:
+            matches[key] = list(set(re.findall(pattern, text)))
+        except Exception as e:
+            print(f"Error in regex matching for {key}: {e}")
+            matches[key] = []
     return matches
 
 def get_sentences_with_entity(text, entity):
@@ -84,14 +104,18 @@ def get_sentences_with_entity(text, entity):
     Returns:
         list: List of sentences containing the entity
     """
-    sentences = sent_tokenize(text)
-    matching_sentences = []
-    
-    for sentence in sentences:
-        if re.search(r'\b' + re.escape(entity) + r'\b', sentence, re.IGNORECASE):
-            matching_sentences.append(sentence)
-    
-    return matching_sentences
+    try:
+        sentences = sent_tokenize(text)
+        matching_sentences = []
+        
+        for sentence in sentences:
+            if re.search(r'\b' + re.escape(entity) + r'\b', sentence, re.IGNORECASE):
+                matching_sentences.append(sentence)
+        
+        return matching_sentences
+    except Exception as e:
+        print(f"Error finding sentences with entity: {e}")
+        return []
 
 def identify_data_category(entity_type, entity, context=None):
     """
