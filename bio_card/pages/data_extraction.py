@@ -11,93 +11,95 @@ def show_data_extraction_page():
     
     with col1:
         st.subheader("Upload Document")
-        uploaded_file = st.file_uploader("Choose a file", type=["pdf", "docx", "txt", "csv", "xlsx"], accept_multiple_files=True)
+        uploaded_file = st.file_uploader("Choose a file", type=["pdf", "docx", "txt"], accept_multiple_files=True)
         
-        if uploaded_file is not None:
-            # Extract text from document
-            st.info(f"Processing {uploaded_file.name}...")
-            extracted_text = extract_text(uploaded_file)
-            
-            if extracted_text:
-                # Save document to collection
-                doc_id = uploaded_file.name
-                st.session_state.doc_collection[doc_id] = {
-                    'name': uploaded_file.name,
-                    'text': extracted_text,
-                    'date_added': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                }
+        # Process files only if files were uploaded
+        if uploaded_file and len(uploaded_file) > 0:
+            for file in uploaded_file:
+                # Extract text from document
+                st.info(f"Processing {file.name}...")
+                extracted_text = extract_text(file)
                 
-                # Extract entities using spaCy
-                with st.spinner("Extracting entities..."):
-                    entities = extract_entities(extracted_text)
-                
-                # Extract regex matches
-                with st.spinner("Extracting patterns..."):
-                    regex_matches = extract_regex_matches(extracted_text)
-                
-                st.success(f"Successfully processed {uploaded_file.name}")
-                
-                # Display extracted information in tabs
-                tabs = st.tabs(["Entities", "Pattern Matches", "Full Text"])
-                
-                with tabs[0]:
-                    for entity_type, items in entities.items():
-                        if items:
-                            st.write(f"**{entity_type}:**")
-                            for item in items:
-                                col1, col2 = st.columns([3, 1])
-                                with col1:
-                                    st.write(f"- {item}")
-                                with col2:
-                                    if st.button(f"Add to Profile", key=f"add_{entity_type}_{item}"):
-                                        category = identify_data_category(entity_type, item)
-                                        context = get_sentences_with_entity(extracted_text, item)
-                                        
-                                        if category == 'personal_info':
-                                            st.session_state.extracted_data[category][item] = {
-                                                'value': item,
-                                                'source': uploaded_file.name,
-                                                'context': context[:3] if context else []
-                                            }
-                                        else:
-                                            st.session_state.extracted_data[category].append({
-                                                'value': item,
-                                                'source': uploaded_file.name,
-                                                'entity_type': entity_type,
-                                                'context': context[:3] if context else []
-                                            })
-                
-                with tabs[1]:
-                    for pattern_type, matches in regex_matches.items():
-                        if matches:
-                            st.write(f"**{pattern_type.capitalize()}:**")
-                            for match in matches:
-                                col1, col2 = st.columns([3, 1])
-                                with col1:
-                                    st.write(f"- {match}")
-                                with col2:
-                                    if st.button(f"Add to Profile", key=f"add_{pattern_type}_{match}"):
-                                        category = identify_data_category(pattern_type, match)
-                                        context = get_sentences_with_entity(extracted_text, match)
-                                        
-                                        if category == 'personal_info':
-                                            st.session_state.extracted_data[category][pattern_type] = {
-                                                'value': match,
-                                                'source': uploaded_file.name,
-                                                'context': context[:3] if context else []
-                                            }
-                                        else:
-                                            st.session_state.extracted_data[category].append({
-                                                'value': match,
-                                                'pattern_type': pattern_type,
-                                                'source': uploaded_file.name,
-                                                'context': context[:3] if context else []
-                                            })
-                
-                with tabs[2]:
-                    st.text_area("Document Text", extracted_text, height=400)
-            else:
-                st.error(f"Could not extract text from {uploaded_file.name}. Unsupported file format.")
+                if extracted_text:
+                    # Save document to collection
+                    doc_id = file.name
+                    st.session_state.doc_collection[doc_id] = {
+                        'name': file.name,
+                        'text': extracted_text,
+                        'date_added': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    }
+                    
+                    # Extract entities using regex patterns
+                    with st.spinner("Extracting entities..."):
+                        entities = extract_entities(extracted_text)
+                    
+                    # Extract regex matches
+                    with st.spinner("Extracting patterns..."):
+                        regex_matches = extract_regex_matches(extracted_text)
+                    
+                    st.success(f"Successfully processed {file.name}")
+                    
+                    # Display extracted information in tabs
+                    tabs = st.tabs(["Entities", "Pattern Matches", "Full Text"])
+                    
+                    with tabs[0]:
+                        for entity_type, items in entities.items():
+                            if items:
+                                st.write(f"**{entity_type}:**")
+                                for item in items:
+                                    col1, col2 = st.columns([3, 1])
+                                    with col1:
+                                        st.write(f"- {item}")
+                                    with col2:
+                                        if st.button(f"Add to Profile", key=f"add_{entity_type}_{item}"):
+                                            category = identify_data_category(entity_type, item)
+                                            context = get_sentences_with_entity(extracted_text, item)
+                                            
+                                            if category == 'personal_info':
+                                                st.session_state.extracted_data[category][item] = {
+                                                    'value': item,
+                                                    'source': file.name,
+                                                    'context': context[:3] if context else []
+                                                }
+                                            else:
+                                                st.session_state.extracted_data[category].append({
+                                                    'value': item,
+                                                    'source': file.name,
+                                                    'entity_type': entity_type,
+                                                    'context': context[:3] if context else []
+                                                })
+                    
+                    with tabs[1]:
+                        for pattern_type, matches in regex_matches.items():
+                            if matches:
+                                st.write(f"**{pattern_type.capitalize()}:**")
+                                for match in matches:
+                                    col1, col2 = st.columns([3, 1])
+                                    with col1:
+                                        st.write(f"- {match}")
+                                    with col2:
+                                        if st.button(f"Add to Profile", key=f"add_{pattern_type}_{match}"):
+                                            category = identify_data_category(pattern_type, match)
+                                            context = get_sentences_with_entity(extracted_text, match)
+                                            
+                                            if category == 'personal_info':
+                                                st.session_state.extracted_data[category][pattern_type] = {
+                                                    'value': match,
+                                                    'source': file.name,
+                                                    'context': context[:3] if context else []
+                                                }
+                                            else:
+                                                st.session_state.extracted_data[category].append({
+                                                    'value': match,
+                                                    'pattern_type': pattern_type,
+                                                    'source': file.name,
+                                                    'context': context[:3] if context else []
+                                                })
+                    
+                    with tabs[2]:
+                        st.text_area("Document Text", extracted_text, height=400)
+                else:
+                    st.error(f"Could not extract text from {file.name}. Unsupported file format.")
     
     with col2:
         st.subheader("Extracted Profile Data")
