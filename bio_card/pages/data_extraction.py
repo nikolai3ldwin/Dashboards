@@ -15,10 +15,14 @@ def ensure_session_state():
             'professional_background': [],
             'financial_info': [],
             'public_records': [],
-            'connections': [],
+            'connections': [],  # Explicitly initialize connections as an empty list
             'digital_footprint': [],
             'inconsistencies': []
         }
+    else:
+        # Ensure 'connections' exists even if it wasn't initially
+        if 'connections' not in st.session_state.extracted_data:
+            st.session_state.extracted_data['connections'] = []
     
     # Initialize document collection if not exists
     if 'doc_collection' not in st.session_state:
@@ -110,6 +114,10 @@ def show_data_extraction_page():
                                                                 }
                                                             else:
                                                                 # For list-based categories, append new item
+                                                                # Ensure the category exists and is a list
+                                                                if category not in st.session_state.extracted_data:
+                                                                    st.session_state.extracted_data[category] = []
+                                                                
                                                                 st.session_state.extracted_data[category].append({
                                                                     'value': item,
                                                                     'source': file.name,
@@ -118,15 +126,14 @@ def show_data_extraction_page():
                                                                 })
                                                             
                                                             st.success(f"Added {item} to {category}")
-                                    
-                                    with file_tabs[1]:
+                                                with file_tabs[1]:
                                         for pattern_type, matches in regex_matches.items():
                                             if matches:
                                                 st.write(f"**{pattern_type.capitalize()}:**")
                                                 for match_idx, match in enumerate(matches):
                                                     # Create unique key for each button
                                                     button_key = f"pattern_{i}_{pattern_type}_{match_idx}"
-                                                    
+
                                                     col1, col2 = st.columns([3, 1])
                                                     with col1:
                                                         st.write(f"- {match}")
@@ -135,7 +142,7 @@ def show_data_extraction_page():
                                                             # Identify appropriate category for the pattern
                                                             category = identify_data_category(pattern_type, match)
                                                             context = get_sentences_with_entity(extracted_text, match)
-                                                            
+
                                                             # Defensive handling of data addition
                                                             if category == 'personal_info':
                                                                 # For personal_info, use pattern_type as key
@@ -152,9 +159,9 @@ def show_data_extraction_page():
                                                                     'source': file.name,
                                                                     'context': context[:3] if context else []
                                                                 })
-                                                            
+
                                                             st.success(f"Added {match} to {category}")
-                                    
+
                                     with file_tabs[2]:
                                         st.text_area("Document Text", extracted_text, height=400, key=f"text_{i}")
                             else:
@@ -211,7 +218,7 @@ def show_data_extraction_page():
                 'professional_background': [],
                 'financial_info': [],
                 'public_records': [],
-                'connections': [],
+                'connections': [],  # Explicitly include connections
                 'digital_footprint': [],
                 'inconsistencies': []
             }
