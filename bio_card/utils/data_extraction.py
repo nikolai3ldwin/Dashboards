@@ -2,11 +2,14 @@ import re
 import nltk
 from nltk.tokenize import sent_tokenize
 
-# Download necessary NLTK resources
+# Download necessary NLTK resources with error handling
 try:
     nltk.data.find('tokenizers/punkt')
 except LookupError:
-    nltk.download('punkt')
+    try:
+        nltk.download('punkt', quiet=True)
+    except Exception as e:
+        print(f"Warning: Could not download NLTK punkt resource: {e}")
 
 # Define regex patterns for various information types
 PATTERNS = {
@@ -25,7 +28,7 @@ PATTERNS = {
 
 def extract_entities(text):
     """
-    Simple entity extraction using regex patterns instead of spaCy.
+    Simple entity extraction using regex patterns.
     
     Args:
         text (str): The text to analyze
@@ -33,6 +36,17 @@ def extract_entities(text):
     Returns:
         dict: Dictionary of entity types and their values
     """
+    # Ensure input is a string
+    if not isinstance(text, str):
+        return {
+            'PERSON': [],
+            'ORG': [],
+            'GPE': [],
+            'LOC': [],
+            'DATE': [],
+            'MONEY': []
+        }
+
     # Create a basic entity structure
     entities = {
         'PERSON': [],
@@ -78,7 +92,8 @@ def extract_entities(text):
     
     for location in locations:
         if re.search(r'\b' + re.escape(location) + r'\b', text):
-            entities['GPE'].append(location)
+            if location not in entities['GPE']:
+                entities['GPE'].append(location)
     
     return entities
 
@@ -92,9 +107,14 @@ def extract_regex_matches(text):
     Returns:
         dict: Dictionary of pattern types and their matches
     """
+    # Ensure input is a string
+    if not isinstance(text, str):
+        return {}
+
     matches = {}
     for key, pattern in PATTERNS.items():
         try:
+            # Use set to remove duplicates, convert to list
             matches[key] = list(set(re.findall(pattern, text)))
         except Exception as e:
             print(f"Error in regex matching for {key}: {e}")
@@ -112,13 +132,19 @@ def get_sentences_with_entity(text, entity):
     Returns:
         list: List of sentences containing the entity
     """
+    # Ensure inputs are strings
+    if not isinstance(text, str) or not isinstance(entity, str):
+        return []
+
     try:
+        # Tokenize text into sentences
         sentences = sent_tokenize(text)
-        matching_sentences = []
         
-        for sentence in sentences:
-            if re.search(r'\b' + re.escape(entity) + r'\b', sentence, re.IGNORECASE):
-                matching_sentences.append(sentence)
+        # Find sentences containing the entity
+        matching_sentences = [
+            sentence for sentence in sentences 
+            if re.search(r'\b' + re.escape(entity) + r'\b', sentence, re.IGNORECASE)
+        ]
         
         return matching_sentences
     except Exception as e:
@@ -137,6 +163,7 @@ def identify_data_category(entity_type, entity, context=None):
     Returns:
         str: The category name
     """
+    # Static mapping for entity types
     categories = {
         'PERSON': 'connections',
         'ORG': 'professional_background',
@@ -146,6 +173,7 @@ def identify_data_category(entity_type, entity, context=None):
         'MONEY': 'financial_info'
     }
     
+    # Static mapping for regex pattern types
     regex_categories = {
         'email': 'digital_footprint',
         'phone': 'personal_info',
@@ -157,9 +185,13 @@ def identify_data_category(entity_type, entity, context=None):
         'company': 'professional_background'
     }
     
+    # Check entity types first
     if entity_type in categories:
         return categories[entity_type]
-    elif entity_type in regex_categories:
+    
+    # Then check regex pattern types
+    if entity_type in regex_categories:
         return regex_categories[entity_type]
-    else:
-        return 'miscellaneous'
+    
+    # Fallback for unknown types
+    return 'inconsistencies'
