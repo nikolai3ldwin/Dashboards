@@ -9,7 +9,7 @@ import requests
 import time
 from bs4 import BeautifulSoup
 import datetime
-from utils.text_processor import clean_html
+from .text_processor import clean_html
 
 # Import configuration
 from data.rss_sources import FEED_CONFIG
