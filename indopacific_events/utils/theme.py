@@ -1,10 +1,10 @@
-# theme.py
+# utils/theme.py
 """
 Theme manager for the Indo-Pacific Dashboard.
 Provides functionality to switch between light and dark mode.
 """
 
-import streamlit as st
+import streamlit as st  # Must import streamlit at the top
 
 def set_theme_config():
     """
@@ -61,7 +61,8 @@ def apply_theme():
         .stMarkdown a {
             color: #0366d6;
         }
-        .theme-toggle-button {
+        /* Improved button styling */
+        button, .stButton>button {
             background-color: #4F8BF9;
             color: white;
             border: none;
@@ -69,9 +70,39 @@ def apply_theme():
             padding: 8px 16px;
             cursor: pointer;
             transition: background-color 0.3s;
+            font-weight: 500;
         }
-        .theme-toggle-button:hover {
+        button:hover, .stButton>button:hover {
             background-color: #2D68D8;
+        }
+        /* Sidebar toggle indicator */
+        [data-testid="collapsedControl"] {
+            background-color: #4F8BF9;
+            color: white;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        [data-testid="collapsedControl"]:after {
+            content: "Filters";
+            position: absolute;
+            right: 45px;
+            background: #4F8BF9;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            transform: translateY(-50%);
+            top: 50%;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        [data-testid="collapsedControl"]:hover:after {
+            opacity: 1;
         }
     </style>
     """
@@ -116,17 +147,63 @@ def apply_theme():
         .stTabs [aria-selected="true"] {
             background-color: #3D3D3D;
         }
-        .theme-toggle-button {
+        /* Improved button styling for dark mode */
+        button, .stButton>button {
             background-color: #FFC107;
-            color: black;
+            color: #1E1E1E;
             border: none;
             border-radius: 5px;
             padding: 8px 16px;
             cursor: pointer;
             transition: background-color 0.3s;
+            font-weight: 600;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
         }
-        .theme-toggle-button:hover {
+        button:hover, .stButton>button:hover {
             background-color: #FFCA28;
+        }
+        /* Sidebar toggle indicator */
+        [data-testid="collapsedControl"] {
+            background-color: #FFC107;
+            color: #1E1E1E;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        [data-testid="collapsedControl"]:after {
+            content: "Filters";
+            position: absolute;
+            right: 45px;
+            background: #FFC107;
+            color: #1E1E1E;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            transform: translateY(-50%);
+            top: 50%;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        [data-testid="collapsedControl"]:hover:after {
+            opacity: 1;
+        }
+        /* Better contrast for pagination and other elements */
+        .pagination {
+            color: #FFFFFF;
+            font-weight: 500;
+        }
+        .stTextInput>div>div>input {
+            color: #FFFFFF;
+            background-color: #2D2D2D;
+        }
+        .stSelectbox>div>div>div {
+            background-color: #2D2D2D;
+            color: #FFFFFF;
         }
     </style>
     """
