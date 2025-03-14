@@ -5,8 +5,9 @@ Component for displaying individual articles in the dashboard with theme support
 
 import streamlit as st
 from PIL import Image
+import hashlib
 
-def display_article(article, image):
+def display_article(article, image, article_index=None):
     """
     Display a single article in a card format with theme support.
     
@@ -16,6 +17,8 @@ def display_article(article, image):
         Article data dictionary containing title, date, summary, etc.
     image : PIL.Image
         Image to display with the article
+    article_index : int or None
+        Index of the article in the list, used to create unique widget keys
     """
     # Get current theme
     theme = st.session_state.get('theme', 'light')
@@ -40,6 +43,16 @@ def display_article(article, image):
         """, 
         unsafe_allow_html=True
     )
+    
+    # Generate a unique identifier for this article
+    # Use hash of title + link + date to ensure uniqueness
+    article_id = hashlib.md5(
+        f"{article['title']}{article['link']}{article['date']}".encode()
+    ).hexdigest()[:10]
+    
+    # If article_index is provided, append it to make extra sure keys are unique
+    if article_index is not None:
+        article_id = f"{article_id}_{article_index}"
     
     # Create a card with a border
     with st.container():
@@ -102,19 +115,22 @@ def display_article(article, image):
                             unsafe_allow_html=True
                         )
             
-            # Call to action buttons
+            # Call to action buttons with unique keys
             col_a, col_b, col_c = st.columns(3)
             with col_a:
-                st.button("Read Full Article", key=f"read_{article['title'][:10]}", 
+                st.button("Read Full Article", 
+                          key=f"read_{article_id}", 
                           help=f"Open {article['link']}")
             with col_b:
-                st.button("Save for Later", key=f"save_{article['title'][:10]}", 
+                st.button("Save for Later", 
+                          key=f"save_{article_id}", 
                           help="Save this article to your reading list")
             with col_c:
-                st.button("Share", key=f"share_{article['title'][:10]}", 
+                st.button("Share", 
+                          key=f"share_{article_id}", 
                           help="Share this article")
 
-def display_article_compact(article, image):
+def display_article_compact(article, image, article_index=None):
     """
     Display a single article in a more compact format with theme support.
     
@@ -124,9 +140,20 @@ def display_article_compact(article, image):
         Article data dictionary containing title, date, summary, etc.
     image : PIL.Image
         Image to display with the article
+    article_index : int or None
+        Index of the article in the list, used to create unique widget keys
     """
     # Get current theme
     theme = st.session_state.get('theme', 'light')
+    
+    # Generate a unique identifier for this article
+    article_id = hashlib.md5(
+        f"{article['title']}{article['link']}{article['date']}".encode()
+    ).hexdigest()[:10]
+    
+    # If article_index is provided, append it to make extra sure keys are unique
+    if article_index is not None:
+        article_id = f"{article_id}_{article_index}"
     
     # Create a compact card
     with st.container():
@@ -174,6 +201,11 @@ def display_articles_grid(articles, images_dict, columns=3):
     cols = st.columns(columns)
     
     for i, article in enumerate(articles):
+        # Generate a unique identifier for this article
+        article_id = hashlib.md5(
+            f"{article['title']}{article.get('link', '')}{i}".encode()
+        ).hexdigest()[:10]
+        
         with cols[i % columns]:
             # Get the image
             image = images_dict.get(article.get('image_url', ''))
@@ -196,17 +228,22 @@ def display_articles_grid(articles, images_dict, columns=3):
             # Image
             st.image(image, use_column_width=True)
             
-            # Title and importance
-            st.markdown(f"### [{article['title']}]({article['link']})")
-            importance_stars = "⭐" * article['importance']
+            # Title and importance with unique key for any buttons
+            st.markdown(f"### [{article['title']}]({article.get('link', '#')})")
+            importance_stars = "⭐" * article.get('importance', 0)
             st.markdown(f"**Importance:** {importance_stars}")
             
             # Truncated summary
-            short_summary = article['summary'][:100] + "..." if len(article['summary']) > 100 else article['summary']
+            summary = article.get('summary', '')
+            short_summary = summary[:100] + "..." if len(summary) > 100 else summary
             st.markdown(short_summary)
             
             # Source and date
-            st.markdown(f"**{article['source']}** · {article['date'].strftime('%m/%d/%Y')}")
+            date_str = article['date'].strftime('%m/%d/%Y') if hasattr(article.get('date', ''), 'strftime') else ''
+            st.markdown(f"**{article.get('source', '')}** · {date_str}")
+            
+            # Add a button with unique key
+            st.button("Read More", key=f"grid_read_{article_id}_{i}")
             
             # End container
             st.markdown("</div>", unsafe_allow_html=True)
