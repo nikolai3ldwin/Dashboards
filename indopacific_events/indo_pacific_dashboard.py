@@ -11,10 +11,14 @@ import pandas as pd
 import os
 import sys
 
-# Import theme manager
-from utils.theme import set_theme_config, apply_theme, create_theme_toggle
+# Set page config first - this MUST be the first Streamlit command
+st.set_page_config(
+    page_title="Indo-Pacific Current Events", 
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# Set up error handling
+# Import utility modules
 try:
     # Ensure the necessary directories exist
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -24,7 +28,7 @@ try:
     if SCRIPT_DIR not in sys.path:
         sys.path.insert(0, SCRIPT_DIR)
     
-    # Import utility modules
+    # Now import utilities
     from utils.feed_parser import fetch_rss_feeds, process_entry
     from utils.image_handler import get_image
     from utils.sentiment import analyze_sentiment
@@ -45,6 +49,60 @@ except Exception as e:
     st.error(f"Error during initialization: {str(e)}")
     st.info("Please make sure all required modules and directories exist.")
     st.stop()
+
+# Theme setup
+def apply_custom_css():
+    """Apply custom CSS for light/dark mode"""
+    # Check if theme is set in session state
+    if 'theme' not in st.session_state:
+        st.session_state.theme = 'light'
+    
+    # Apply the appropriate theme
+    if st.session_state.theme == 'light':
+        css = """
+        <style>
+            .stApp {
+                background-color: #FFFFFF;
+                color: #31333F;
+            }
+            .article-card {
+                background-color: #F9F9F9;
+                border: 1px solid #EEEEEE;
+            }
+            a {
+                color: #0366d6;
+            }
+        </style>
+        """
+    else:  # dark theme
+        css = """
+        <style>
+            .stApp {
+                background-color: #1E1E1E;
+                color: #E0E0E0;
+            }
+            .article-card {
+                background-color: #2D2D2D;
+                border: 1px solid #3D3D3D;
+            }
+            a {
+                color: #58A6FF;
+            }
+        </style>
+        """
+    
+    st.markdown(css, unsafe_allow_html=True)
+
+# Apply custom CSS for theming
+apply_custom_css()
+
+def toggle_theme():
+    """Toggle between light and dark mode"""
+    if st.session_state.theme == 'light':
+        st.session_state.theme = 'dark'
+    else:
+        st.session_state.theme = 'light'
+    st.experimental_rerun()
 
 def rate_importance(content, tags):
     """
@@ -125,19 +183,15 @@ def get_category_analysis(content):
     return {k: v for k, v in categories.items() if v > 0}
 
 def main():
-    # Initialize and apply theme
-    set_theme_config()
-    apply_theme()
-    
-    # Configure page settings
-    st.set_page_config(page_title="Indo-Pacific Current Events", layout="wide")
-    
     # Add theme toggle in header
     header_cols = st.columns([3, 1])
     with header_cols[0]:
         st.title("Indo-Pacific Current Events Dashboard")
     with header_cols[1]:
-        create_theme_toggle()
+        # Add theme toggle button
+        current_theme = st.session_state.theme
+        theme_label = "🌙 Dark Mode" if current_theme == 'light' else "☀️ Light Mode"
+        st.button(theme_label, on_click=toggle_theme)
     
     # Create sidebar filters
     filters = create_sidebar_filters(RSS_FEEDS)
@@ -286,54 +340,64 @@ def main():
         recent_date = max([a['date'] for a in all_articles], default=datetime.datetime.now())
         st.metric("Most Recent", recent_date.strftime("%Y-%m-%d %H:%M"))
     
-    # Pagination controls
-    articles_per_page = 10
-    if 'page' not in st.session_state:
-        st.session_state.page = 0
-        
+    # Set up pagination
+    articles_per_page = 6  # Limiting cards per page
+    
+    # Initialize page number if not already set
+    if 'page_number' not in st.session_state:
+        st.session_state.page_number = 0
+    
+    # Calculate total number of pages
     total_pages = (len(all_articles) - 1) // articles_per_page + 1
     
-    col1, col2, col3 = st.columns([1, 3, 1])
+    # Page navigation
+    st.markdown("### Articles")
+    
+    # Navigation buttons
+    col1, col2, col3 = st.columns([1, 2, 1])
     with col1:
-        if st.button("← Previous", disabled=st.session_state.page <= 0):
-            st.session_state.page -= 1
+        if st.button("← Previous Page", disabled=st.session_state.page_number <= 0):
+            st.session_state.page_number -= 1
             st.experimental_rerun()
     
     with col2:
-        st.write(f"Page {st.session_state.page + 1} of {total_pages}")
-        
+        # Page indicator
+        st.markdown(f"<div style='text-align: center'>Page {st.session_state.page_number + 1} of {total_pages}</div>", unsafe_allow_html=True)
+    
     with col3:
-        if st.button("Next →", disabled=st.session_state.page >= total_pages - 1):
-            st.session_state.page += 1
+        if st.button("Next Page →", disabled=st.session_state.page_number >= total_pages - 1):
+            st.session_state.page_number += 1
             st.experimental_rerun()
     
     # Calculate slice for current page
-    start_idx = st.session_state.page * articles_per_page
+    start_idx = st.session_state.page_number * articles_per_page
     end_idx = min(start_idx + articles_per_page, len(all_articles))
     
-    # Display articles for current page
+    # Display current page of articles
     for i, article in enumerate(all_articles[start_idx:end_idx]):
         try:
-            # Pass the article index to ensure unique widget keys
-            display_article(article, get_image(article['image_url']), article_index=start_idx+i)
+            # Use index to ensure unique widget keys
+            display_article(article, get_image(article['image_url'] or FILLER_IMAGE_PATH))
         except Exception as e:
             st.error(f"Error displaying article: {str(e)}")
             continue
     
-    # Bottom pagination controls
+    # Bottom navigation buttons
     st.markdown("---")
-    col1, col2, col3 = st.columns([1, 3, 1])
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
     with col1:
-        if st.button("← Previous", key="prev_bottom", disabled=st.session_state.page <= 0):
-            st.session_state.page -= 1
+        if st.button("← Previous Page", key="prev_bottom", disabled=st.session_state.page_number <= 0):
+            st.session_state.page_number -= 1
             st.experimental_rerun()
     
     with col2:
-        st.write(f"Page {st.session_state.page + 1} of {total_pages}")
-        
+        # Page indicator
+        st.markdown(f"<div style='text-align: center'>Page {st.session_state.page_number + 1} of {total_pages}</div>", unsafe_allow_html=True)
+    
     with col3:
-        if st.button("Next →", key="next_bottom", disabled=st.session_state.page >= total_pages - 1):
-            st.session_state.page += 1
+        if st.button("Next Page →", key="next_bottom", disabled=st.session_state.page_number >= total_pages - 1):
+            st.session_state.page_number += 1
             st.experimental_rerun()
     
     # Footer
