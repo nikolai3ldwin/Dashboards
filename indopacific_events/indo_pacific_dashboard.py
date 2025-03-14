@@ -19,6 +19,10 @@ os.makedirs(os.path.join(SCRIPT_DIR, "data", "static", "images"), exist_ok=True)
 if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
 
+# Simple theme handling with session state (before any st commands)
+if 'theme' not in st.session_state:
+    st.session_state.theme = 'light'
+
 # This MUST be the first Streamlit command
 st.set_page_config(
     page_title="Indo-Pacific Current Events", 
@@ -32,6 +36,7 @@ try:
     from utils.image_handler import get_image
     from utils.sentiment import analyze_sentiment
     from utils.text_processor import generate_tags, generate_summary
+    from utils.theme import apply_theme, toggle_theme
     
     # Import data sources
     from data.keywords import IMPORTANT_KEYWORDS, CATEGORY_WEIGHTS
@@ -40,7 +45,9 @@ try:
     # Import UI components
     from components.filters import create_sidebar_filters
     from components.article_card import display_article
-    from utils.theme import toggle_theme  # Only import the toggle_theme function
+    
+    # Apply theme right after st.set_page_config
+    apply_theme()
     
     # Constants
     FILLER_IMAGE_PATH = os.path.join(SCRIPT_DIR, "data", "static", "images", "indo_pacific_filler_pic.jpg")
@@ -49,44 +56,6 @@ except Exception as e:
     st.error(f"Error during initialization: {str(e)}")
     st.info("Please make sure all required modules and directories exist.")
     st.stop()
-
-# Simple theme handling with session state
-if 'theme' not in st.session_state:
-    st.session_state.theme = 'light'
-
-# Custom CSS for theming - define it directly here instead of in apply_theme()
-if st.session_state.theme == 'light':
-    st.markdown("""
-    <style>
-        .stApp {
-            background-color: #FFFFFF;
-            color: #31333F;
-        }
-        .article-card {
-            background-color: #F9F9F9;
-            border: 1px solid #EEEEEE;
-        }
-        a {
-            color: #0366d6;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-else:  # dark theme
-    st.markdown("""
-    <style>
-        .stApp {
-            background-color: #1E1E1E;
-            color: #E0E0E0;
-        }
-        .article-card {
-            background-color: #2D2D2D;
-            border: 1px solid #3D3D3D;
-        }
-        a {
-            color: #58A6FF;
-        }
-    </style>
-    """, unsafe_allow_html=True)
 
 def rate_importance(content, tags):
     """
