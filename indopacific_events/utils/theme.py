@@ -5,7 +5,6 @@ Provides functionality to switch between light and dark mode.
 """
 
 import streamlit as st
-import base64
 
 def set_theme_config():
     """
@@ -28,6 +27,7 @@ def toggle_theme():
 def apply_theme():
     """
     Apply the current theme using custom CSS.
+    This function should only be called AFTER st.set_page_config()
     """
     # Define CSS for light and dark themes
     light_theme_css = """
