@@ -1,7 +1,6 @@
 # utils/feed_parser.py
 """
-Utilities for fetching and processing RSS feeds for the Indo-Pacific Dashboard.
-Modified to use logging instead of direct Streamlit warnings.
+Optimized version of feed parser with faster handling of feed errors.
 """
 
 import streamlit as st  # Import Streamlit at the top
@@ -14,6 +13,7 @@ import random
 from urllib.parse import urlparse
 import ssl
 import logging
+import concurrent.futures
 
 # Import logging directly - since this file is imported after logger initialization
 logger = logging.getLogger("indo_pacific_dashboard")
@@ -21,13 +21,35 @@ logger = logging.getLogger("indo_pacific_dashboard")
 # Disable SSL verification warnings for problematic sites
 ssl._create_default_https_context = ssl._create_unverified_context
 
+# Import text processor
+from .text_processor import clean_html
+
 # Import configuration
 from data.rss_sources import FEED_CONFIG
 
+# Create an in-memory cache for mock feeds to avoid recreating them
+_mock_feed_cache = {}
+
+@st.cache_data(ttl=3600)  # Cache for 1 hour
+def cached_fetch_rss_feeds(feed_list):
+    """
+    Cached version of fetch_rss_feeds for improved performance.
+    
+    Parameters:
+    -----------
+    feed_list : list
+        List of (url, source_name) tuples
+    
+    Returns:
+    --------
+    dict
+        Dictionary mapping source names to processed feed data
+    """
+    return fetch_rss_feeds(feed_list)
+
 def fetch_rss_feeds(feed_list):
     """
-    Fetch RSS feeds from multiple sources with caching and error handling.
-    Uses logging instead of direct Streamlit warnings.
+    Fetch RSS feeds from multiple sources with parallel processing.
     
     Parameters:
     -----------
@@ -41,23 +63,34 @@ def fetch_rss_feeds(feed_list):
     """
     results = {}
     
-    for feed_url, source_name in feed_list:
-        try:
-            feed_data = fetch_single_feed(feed_url)
-            if feed_data and feed_data.get('entries'):
-                results[source_name] = feed_data
-            else:
-                # Log warning instead of showing on UI
-                logger.warning(f"No entries found for {source_name}")
-        except Exception as e:
-            # Log error instead of showing on UI
-            logger.error(f"Error fetching {source_name}: {str(e)}")
+    # Use thread pool to fetch feeds in parallel
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        # Create a dictionary of future to source_name
+        future_to_source = {
+            executor.submit(fetch_single_feed_fast, url): (url, source_name) 
+            for url, source_name in feed_list
+        }
+        
+        # Process results as they complete
+        for future in concurrent.futures.as_completed(future_to_source):
+            url, source_name = future_to_source[future]
+            try:
+                feed_data = future.result()
+                if feed_data and feed_data.get('entries'):
+                    results[source_name] = feed_data
+                else:
+                    # If no entries and not already logged, log a warning
+                    if not feed_data.get('is_mock', False):
+                        logger.warning(f"No entries found for {source_name}")
+            except Exception as e:
+                # Log error instead of showing on UI
+                logger.error(f"Error fetching {source_name}: {str(e)}")
     
     return results
 
-def fetch_single_feed(url):
+def fetch_single_feed_fast(url):
     """
-    Fetch a single RSS feed with retry logic and error handling.
+    Faster version of feed fetching with reduced retries and timeouts.
     
     Parameters:
     -----------
@@ -69,20 +102,19 @@ def fetch_single_feed(url):
     dict
         Processed feed data with entries
     """
-    max_retries = FEED_CONFIG.get("max_retries", 3)
-    retry_delay = FEED_CONFIG.get("retry_delay", 1)  # seconds
-    timeout = FEED_CONFIG.get("timeout", 10)  # seconds
+    max_retries = 1  # Reduced retries for speed
+    timeout = 5  # Reduced timeout for speed
+    domain = urlparse(url).netloc
+    
+    # Check if we have a mock feed already cached
+    cache_key = f"mock_{domain}"
+    if url in _mock_feed_cache:
+        return _mock_feed_cache[url]
     
     # List of user agents to rotate between
     user_agents = [
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0',
-        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36'
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     ]
-    
-    # Get domain from URL for request headers
-    domain = urlparse(url).netloc
     
     for attempt in range(max_retries):
         try:
@@ -92,63 +124,52 @@ def fetch_single_feed(url):
             # Create request headers
             headers = {
                 'User-Agent': user_agent,
-                'Accept': 'application/rss+xml, application/xml, text/xml, application/atom+xml',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Referer': f'https://{domain}/',
-                'DNT': '1',
-                'Cache-Control': 'max-age=0'
+                'Accept': 'application/rss+xml, application/xml, text/xml, application/atom+xml'
             }
             
-            # Use requests or direct feedparser based on the attempt
-            if attempt == 0:
-                # First try with requests (more control)
+            # Direct approach first (faster)
+            feed = feedparser.parse(url, agent=user_agent)
+            
+            # Check if feed was successfully parsed and has entries
+            if feed.entries:
+                # Convert to a more easily serializable format
+                entries = []
+                for entry in feed.entries:
+                    processed_entry = process_entry(entry)
+                    entries.append(processed_entry)
+                
+                return {'entries': entries, 'status': getattr(feed, 'status', 200)}
+            
+            # If we got here, feeding parsing failed - try with requests as fallback
+            try:
                 response = requests.get(url, headers=headers, timeout=timeout, verify=False)
                 response.raise_for_status()
                 feed = feedparser.parse(response.content)
-            else:
-                # Then try direct feedparser on retries
-                feed = feedparser.parse(url, agent=user_agent)
-            
-            # Check if feed was successfully parsed
-            if hasattr(feed, 'status') and feed.status != 200 and not feed.entries:
-                if attempt < max_retries - 1:
-                    time.sleep(retry_delay)
-                    continue
-                else:
-                    raise Exception(f"Failed to parse feed: Status {feed.status}")
-            
-            # Even without a status code, check if we got entries
-            if not feed.entries:
-                # Try to create a minimal mock feed for problematic sources
-                if attempt == max_retries - 1:
-                    return create_mock_feed(url, domain)
-                else:
-                    time.sleep(retry_delay)
-                    continue
-            
-            # Convert to a more easily serializable format
-            entries = []
-            for entry in feed.entries:
-                processed_entry = process_entry(entry)
-                entries.append(processed_entry)
-            
-            if not entries:
-                if attempt < max_retries - 1:
-                    time.sleep(retry_delay)
-                    continue
-                else:
-                    return create_mock_feed(url, domain)
                 
-            return {'entries': entries, 'status': getattr(feed, 'status', 200)}
+                if feed.entries:
+                    entries = []
+                    for entry in feed.entries:
+                        processed_entry = process_entry(entry)
+                        entries.append(processed_entry)
+                    
+                    return {'entries': entries, 'status': response.status_code}
+            except:
+                pass
+            
+            # If all methods failed, create a mock feed
+            mock_feed = create_mock_feed(url, domain)
+            _mock_feed_cache[url] = mock_feed  # Cache the mock feed
+            return mock_feed
             
         except Exception as e:
             if attempt < max_retries - 1:
-                time.sleep(retry_delay)
+                time.sleep(0.5)  # Brief delay between retries
                 continue
             else:
-                # Log the error instead of raising it
-                logger.error(f"Failed to fetch {url} after {max_retries} attempts: {str(e)}")
-                return create_mock_feed(url, domain)
+                # Create and cache a mock feed
+                mock_feed = create_mock_feed(url, domain)
+                _mock_feed_cache[url] = mock_feed
+                return mock_feed
 
 def create_mock_feed(url, domain):
     """
@@ -200,7 +221,6 @@ def process_entry(entry):
                 break
     
     # Clean the summary
-    from .text_processor import clean_html
     summary = clean_html(summary) if summary else "No summary available."
     
     # Handle published date with fallbacks
@@ -253,21 +273,3 @@ def process_entry(entry):
         'published_parsed': published,
         'media_content': media_content
     }
-
-# Add the cached version of the function with proper streamlit import
-@st.cache_data(ttl=FEED_CONFIG.get("cache_ttl", 3600))
-def cached_fetch_rss_feeds(feed_list):
-    """
-    Cached version of fetch_rss_feeds for improved performance.
-    
-    Parameters:
-    -----------
-    feed_list : list
-        List of (url, source_name) tuples
-    
-    Returns:
-    --------
-    dict
-        Dictionary mapping source names to processed feed data
-    """
-    return fetch_rss_feeds(feed_list)
