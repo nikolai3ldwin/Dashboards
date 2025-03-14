@@ -1,6 +1,6 @@
 # components/article_card.py
 """
-Component for displaying individual articles in the dashboard.
+Component for displaying individual articles in the dashboard with theme support.
 """
 
 import streamlit as st
@@ -8,7 +8,7 @@ from PIL import Image
 
 def display_article(article, image):
     """
-    Display a single article in a card format.
+    Display a single article in a card format with theme support.
     
     Parameters:
     -----------
@@ -17,10 +17,32 @@ def display_article(article, image):
     image : PIL.Image
         Image to display with the article
     """
+    # Get current theme
+    theme = st.session_state.get('theme', 'light')
+    
+    # Card background color based on theme
+    bg_color = "#F9F9F9" if theme == 'light' else "#2D2D2D"
+    border_color = "#EEEEEE" if theme == 'light' else "#3D3D3D"
+    text_color = "#31333F" if theme == 'light' else "#E0E0E0"
+    link_color = "#0366d6" if theme == 'light' else "#58A6FF"
+    
+    # Create a card with a border and proper theming
+    st.markdown(
+        f"""
+        <div style="background-color: {bg_color}; 
+                    border: 1px solid {border_color}; 
+                    border-radius: 8px; 
+                    padding: 15px; 
+                    margin-bottom: 20px;
+                    color: {text_color};"
+             class="article-card">
+        </div>
+        """, 
+        unsafe_allow_html=True
+    )
+    
     # Create a card with a border
     with st.container():
-        st.markdown("---")
-        
         # Two-column layout
         col1, col2 = st.columns([1, 3])
         
@@ -67,9 +89,6 @@ def display_article(article, image):
                         # Calculate width percentage (convert -1 to 1 scale to 0-100%)
                         width = abs(score) * 50  # 50% is neutral
                         
-                        # Create label
-                        label = f"{entity}: {score:.2f}"
-                        
                         # Display horizontal bar
                         st.markdown(
                             f"""
@@ -97,7 +116,7 @@ def display_article(article, image):
 
 def display_article_compact(article, image):
     """
-    Display a single article in a more compact format.
+    Display a single article in a more compact format with theme support.
     
     Parameters:
     -----------
@@ -106,6 +125,9 @@ def display_article_compact(article, image):
     image : PIL.Image
         Image to display with the article
     """
+    # Get current theme
+    theme = st.session_state.get('theme', 'light')
+    
     # Create a compact card
     with st.container():
         # Horizontal layout
@@ -129,7 +151,7 @@ def display_article_compact(article, image):
 
 def display_articles_grid(articles, images_dict, columns=3):
     """
-    Display articles in a grid layout.
+    Display articles in a grid layout with theme support.
     
     Parameters:
     -----------
@@ -140,6 +162,14 @@ def display_articles_grid(articles, images_dict, columns=3):
     columns : int
         Number of columns in the grid
     """
+    # Get current theme
+    theme = st.session_state.get('theme', 'light')
+    
+    # Theme-specific colors
+    bg_color = "#F9F9F9" if theme == 'light' else "#2D2D2D"
+    border_color = "#EEEEEE" if theme == 'light' else "#3D3D3D"
+    text_color = "#31333F" if theme == 'light' else "#E0E0E0"
+    
     # Create a grid of articles
     cols = st.columns(columns)
     
@@ -148,11 +178,17 @@ def display_articles_grid(articles, images_dict, columns=3):
             # Get the image
             image = images_dict.get(article.get('image_url', ''))
             
-            # Card container
+            # Card container with theme support
             st.markdown(
                 f"""
-                <div style="border: 1px solid #ddd; border-radius: 5px; padding: 10px; 
-                            margin-bottom: 15px; height: 400px; overflow: hidden;">
+                <div style="border: 1px solid {border_color}; 
+                            border-radius: 5px; 
+                            padding: 10px; 
+                            margin-bottom: 15px; 
+                            height: 400px; 
+                            overflow: hidden;
+                            background-color: {bg_color};
+                            color: {text_color};">
                 """,
                 unsafe_allow_html=True
             )
