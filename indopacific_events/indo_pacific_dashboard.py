@@ -5,14 +5,17 @@ Indo-Pacific Dashboard - Main application file
 A Streamlit dashboard for monitoring and analyzing current events in the Indo-Pacific region.
 """
 
-# Imports
-import streamlit as st
-import datetime
+# Third-party imports
+import streamlit as st # import first
 import pandas as pd
+
+# Standard library imports
 import os
 import sys
 import time
 import logging
+import datetime
+
 
 # Ensure the necessary directories exist
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -51,11 +54,17 @@ logger = logging.getLogger("indo_pacific_dashboard")
 
 # Now import utilities AFTER st.set_page_config
 try:
-    from utils.feed_parser import fetch_rss_feeds, process_entry
+    # Import UI theme functionality
+    from utils.theme import apply_theme, toggle_theme
+    
+    # Apply theme immediately
+    apply_theme()
+    
+    # Import other utilities
+    from utils.feed_parser import cached_fetch_rss_feeds, process_entry
     from utils.image_handler import get_image
     from utils.sentiment import analyze_sentiment
     from utils.text_processor import generate_tags, generate_summary
-    from utils.theme import apply_theme, toggle_theme
     
     # Import data sources
     from data.keywords import IMPORTANT_KEYWORDS, CATEGORY_WEIGHTS
@@ -64,9 +73,6 @@ try:
     # Import UI components
     from components.filters import create_sidebar_filters
     from components.article_card import display_article
-    
-    # Apply theme right after st.set_page_config
-    apply_theme()
     
     # Constants
     FILLER_IMAGE_PATH = os.path.join(SCRIPT_DIR, "data", "static", "images", "indo_pacific_filler_pic.jpg")
@@ -178,7 +184,7 @@ def get_article_data(selected_feeds, filters):
     
     try:
         # Fetch RSS feeds
-        feeds_data = fetch_rss_feeds(selected_feeds)
+        feeds_data = cached_fetch_rss_feeds(selected_feeds)
         
         # Process each entry
         for source_name, feed in feeds_data.items():
