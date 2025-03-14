@@ -11,14 +11,14 @@ import pandas as pd
 import os
 import sys
 
-# Set page config first - this MUST be the first Streamlit command
+# This MUST be the first Streamlit command
 st.set_page_config(
     page_title="Indo-Pacific Current Events", 
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Import utility modules
+# Only import modules AFTER st.set_page_config
 try:
     # Ensure the necessary directories exist
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -50,51 +50,43 @@ except Exception as e:
     st.info("Please make sure all required modules and directories exist.")
     st.stop()
 
-# Theme setup
-def apply_custom_css():
-    """Apply custom CSS for light/dark mode"""
-    # Check if theme is set in session state
-    if 'theme' not in st.session_state:
-        st.session_state.theme = 'light'
-    
-    # Apply the appropriate theme
-    if st.session_state.theme == 'light':
-        css = """
-        <style>
-            .stApp {
-                background-color: #FFFFFF;
-                color: #31333F;
-            }
-            .article-card {
-                background-color: #F9F9F9;
-                border: 1px solid #EEEEEE;
-            }
-            a {
-                color: #0366d6;
-            }
-        </style>
-        """
-    else:  # dark theme
-        css = """
-        <style>
-            .stApp {
-                background-color: #1E1E1E;
-                color: #E0E0E0;
-            }
-            .article-card {
-                background-color: #2D2D2D;
-                border: 1px solid #3D3D3D;
-            }
-            a {
-                color: #58A6FF;
-            }
-        </style>
-        """
-    
-    st.markdown(css, unsafe_allow_html=True)
+# Simple theme handling with session state
+if 'theme' not in st.session_state:
+    st.session_state.theme = 'light'
 
-# Apply custom CSS for theming
-apply_custom_css()
+# Custom CSS for theming
+if st.session_state.theme == 'light':
+    st.markdown("""
+    <style>
+        .stApp {
+            background-color: #FFFFFF;
+            color: #31333F;
+        }
+        .article-card {
+            background-color: #F9F9F9;
+            border: 1px solid #EEEEEE;
+        }
+        a {
+            color: #0366d6;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+else:  # dark theme
+    st.markdown("""
+    <style>
+        .stApp {
+            background-color: #1E1E1E;
+            color: #E0E0E0;
+        }
+        .article-card {
+            background-color: #2D2D2D;
+            border: 1px solid #3D3D3D;
+        }
+        a {
+            color: #58A6FF;
+        }
+    </style>
+    """, unsafe_allow_html=True)
 
 def toggle_theme():
     """Toggle between light and dark mode"""
@@ -183,7 +175,7 @@ def get_category_analysis(content):
     return {k: v for k, v in categories.items() if v > 0}
 
 def main():
-    # Add theme toggle in header
+    # Add header
     header_cols = st.columns([3, 1])
     with header_cols[0]:
         st.title("Indo-Pacific Current Events Dashboard")
@@ -341,7 +333,7 @@ def main():
         st.metric("Most Recent", recent_date.strftime("%Y-%m-%d %H:%M"))
     
     # Set up pagination
-    articles_per_page = 6  # Limiting cards per page
+    articles_per_page = 5  # Limiting cards per page
     
     # Initialize page number if not already set
     if 'page_number' not in st.session_state:
@@ -376,7 +368,6 @@ def main():
     # Display current page of articles
     for i, article in enumerate(all_articles[start_idx:end_idx]):
         try:
-            # Use index to ensure unique widget keys
             display_article(article, get_image(article['image_url'] or FILLER_IMAGE_PATH))
         except Exception as e:
             st.error(f"Error displaying article: {str(e)}")
