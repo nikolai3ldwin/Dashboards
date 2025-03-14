@@ -312,9 +312,10 @@ def main():
     end_idx = min(start_idx + articles_per_page, len(all_articles))
     
     # Display articles for current page
-    for article in all_articles[start_idx:end_idx]:
+    for i, article in enumerate(all_articles[start_idx:end_idx]):
         try:
-            display_article(article, get_image(article['image_url']))
+            # Pass the article index to ensure unique widget keys
+            display_article(article, get_image(article['image_url']), article_index=start_idx+i)
         except Exception as e:
             st.error(f"Error displaying article: {str(e)}")
             continue
