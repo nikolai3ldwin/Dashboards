@@ -3,11 +3,11 @@
 Enhanced utilities for handling and processing images in the Indo-Pacific Dashboard.
 """
 
+import streamlit as st  # Import streamlit at the top
 import os
 import requests
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
-import streamlit as st
 import random
 
 # Cache images to avoid reloading
