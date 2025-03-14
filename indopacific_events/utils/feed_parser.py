@@ -1,38 +1,32 @@
-# feed_parser.py
+# utils/feed_parser.py
 """
 Utilities for fetching and processing RSS feeds for the Indo-Pacific Dashboard.
+Modified to use logging instead of direct Streamlit warnings.
 """
 
-import streamlit as st
-import feedparser
 import requests
-import time
-from bs4 import BeautifulSoup# feed_parser.py
-"""
-Enhanced utilities for fetching and processing RSS feeds for the Indo-Pacific Dashboard.
-"""
-
-import streamlit as st
 import feedparser
-import requests
 import time
-from bs4 import BeautifulSoup
 import datetime
+from bs4 import BeautifulSoup
 import random
 from urllib.parse import urlparse
 import ssl
-from .text_processor import clean_html
+import logging
 
-# Import configuration
-from data.rss_sources import FEED_CONFIG
+# Import logging directly - since this file is imported after logger initialization
+logger = logging.getLogger("indo_pacific_dashboard")
 
 # Disable SSL verification warnings for problematic sites
 ssl._create_default_https_context = ssl._create_unverified_context
 
-@st.cache_data(ttl=FEED_CONFIG.get("cache_ttl", 3600))
+# Import configuration
+from data.rss_sources import FEED_CONFIG
+
 def fetch_rss_feeds(feed_list):
     """
     Fetch RSS feeds from multiple sources with caching and error handling.
+    Uses logging instead of direct Streamlit warnings.
     
     Parameters:
     -----------
@@ -52,9 +46,11 @@ def fetch_rss_feeds(feed_list):
             if feed_data and feed_data.get('entries'):
                 results[source_name] = feed_data
             else:
-                st.warning(f"No entries found for {source_name}")
+                # Log warning instead of showing on UI
+                logger.warning(f"No entries found for {source_name}")
         except Exception as e:
-            st.warning(f"Error fetching {source_name}: {str(e)}")
+            # Log error instead of showing on UI
+            logger.error(f"Error fetching {source_name}: {str(e)}")
     
     return results
 
@@ -149,7 +145,9 @@ def fetch_single_feed(url):
                 time.sleep(retry_delay)
                 continue
             else:
-                raise Exception(f"Failed after {max_retries} attempts: {str(e)}")
+                # Log the error instead of raising it
+                logger.error(f"Failed to fetch {url} after {max_retries} attempts: {str(e)}")
+                return create_mock_feed(url, domain)
 
 def create_mock_feed(url, domain):
     """
@@ -160,10 +158,13 @@ def create_mock_feed(url, domain):
     mock_entry = {
         'title': f"Unable to fetch content from {domain}",
         'link': url,
-        'summary': f"This is a placeholder entry. The RSS feed at {url} could not be accessed. This could be due to the feed being temporarily unavailable, requiring authentication, or having changed its URL. Please check the source website directly for the latest news.",
+        'summary': f"This is a placeholder entry. The RSS feed at {url} could not be accessed.",
         'published_parsed': current_time.timetuple(),
         'media_content': []
     }
+    
+    # Log the mock feed creation instead of displaying it
+    logger.warning(f"Created mock feed for {domain} as feed was unavailable")
     
     return {'entries': [mock_entry], 'status': 0, 'is_mock': True}
 
