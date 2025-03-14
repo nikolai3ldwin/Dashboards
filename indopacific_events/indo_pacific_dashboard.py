@@ -11,6 +11,14 @@ import pandas as pd
 import os
 import sys
 
+# Ensure the necessary directories exist
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+os.makedirs(os.path.join(SCRIPT_DIR, "data", "static", "images"), exist_ok=True)
+
+# Add current directory to path if needed
+if SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, SCRIPT_DIR)
+
 # This MUST be the first Streamlit command
 st.set_page_config(
     page_title="Indo-Pacific Current Events", 
@@ -18,17 +26,8 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Only import modules AFTER st.set_page_config
+# Now import utilities AFTER st.set_page_config
 try:
-    # Ensure the necessary directories exist
-    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-    os.makedirs(os.path.join(SCRIPT_DIR, "data", "static", "images"), exist_ok=True)
-    
-    # Add current directory to path if needed
-    if SCRIPT_DIR not in sys.path:
-        sys.path.insert(0, SCRIPT_DIR)
-    
-    # Now import utilities
     from utils.feed_parser import fetch_rss_feeds, process_entry
     from utils.image_handler import get_image
     from utils.sentiment import analyze_sentiment
@@ -41,7 +40,7 @@ try:
     # Import UI components
     from components.filters import create_sidebar_filters
     from components.article_card import display_article
-    from utils.theme import apply_theme
+    from utils.theme import toggle_theme  # Only import the toggle_theme function
     
     # Constants
     FILLER_IMAGE_PATH = os.path.join(SCRIPT_DIR, "data", "static", "images", "indo_pacific_filler_pic.jpg")
@@ -55,13 +54,39 @@ except Exception as e:
 if 'theme' not in st.session_state:
     st.session_state.theme = 'light'
 
-def toggle_theme():
-    """Toggle between light and dark mode"""
-    if st.session_state.theme == 'light':
-        st.session_state.theme = 'dark'
-    else:
-        st.session_state.theme = 'light'
-    st.experimental_rerun()
+# Custom CSS for theming - define it directly here instead of in apply_theme()
+if st.session_state.theme == 'light':
+    st.markdown("""
+    <style>
+        .stApp {
+            background-color: #FFFFFF;
+            color: #31333F;
+        }
+        .article-card {
+            background-color: #F9F9F9;
+            border: 1px solid #EEEEEE;
+        }
+        a {
+            color: #0366d6;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+else:  # dark theme
+    st.markdown("""
+    <style>
+        .stApp {
+            background-color: #1E1E1E;
+            color: #E0E0E0;
+        }
+        .article-card {
+            background-color: #2D2D2D;
+            border: 1px solid #3D3D3D;
+        }
+        a {
+            color: #58A6FF;
+        }
+    </style>
+    """, unsafe_allow_html=True)
 
 def rate_importance(content, tags):
     """
@@ -151,9 +176,6 @@ def main():
         current_theme = st.session_state.theme
         theme_label = "🌙 Dark Mode" if current_theme == 'light' else "☀️ Light Mode"
         st.button(theme_label, on_click=toggle_theme)
-    
-    # Apply theme AFTER st.set_page_config
-    apply_theme()
     
     # Create sidebar filters
     filters = create_sidebar_filters(RSS_FEEDS)
