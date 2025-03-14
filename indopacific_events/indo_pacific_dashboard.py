@@ -11,6 +11,9 @@ import pandas as pd
 import os
 import sys
 
+# Import theme manager
+from utils.theme import set_theme_config, apply_theme, create_theme_toggle
+
 # Set up error handling
 try:
     # Ensure the necessary directories exist
@@ -122,8 +125,19 @@ def get_category_analysis(content):
     return {k: v for k, v in categories.items() if v > 0}
 
 def main():
+    # Initialize and apply theme
+    set_theme_config()
+    apply_theme()
+    
+    # Configure page settings
     st.set_page_config(page_title="Indo-Pacific Current Events", layout="wide")
-    st.title("Indo-Pacific Current Events Dashboard")
+    
+    # Add theme toggle in header
+    header_cols = st.columns([3, 1])
+    with header_cols[0]:
+        st.title("Indo-Pacific Current Events Dashboard")
+    with header_cols[1]:
+        create_theme_toggle()
     
     # Create sidebar filters
     filters = create_sidebar_filters(RSS_FEEDS)
