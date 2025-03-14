@@ -41,6 +41,7 @@ try:
     # Import UI components
     from components.filters import create_sidebar_filters
     from components.article_card import display_article
+    from utils.theme import apply_theme
     
     # Constants
     FILLER_IMAGE_PATH = os.path.join(SCRIPT_DIR, "data", "static", "images", "indo_pacific_filler_pic.jpg")
@@ -53,40 +54,6 @@ except Exception as e:
 # Simple theme handling with session state
 if 'theme' not in st.session_state:
     st.session_state.theme = 'light'
-
-# Custom CSS for theming
-if st.session_state.theme == 'light':
-    st.markdown("""
-    <style>
-        .stApp {
-            background-color: #FFFFFF;
-            color: #31333F;
-        }
-        .article-card {
-            background-color: #F9F9F9;
-            border: 1px solid #EEEEEE;
-        }
-        a {
-            color: #0366d6;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-else:  # dark theme
-    st.markdown("""
-    <style>
-        .stApp {
-            background-color: #1E1E1E;
-            color: #E0E0E0;
-        }
-        .article-card {
-            background-color: #2D2D2D;
-            border: 1px solid #3D3D3D;
-        }
-        a {
-            color: #58A6FF;
-        }
-    </style>
-    """, unsafe_allow_html=True)
 
 def toggle_theme():
     """Toggle between light and dark mode"""
@@ -184,6 +151,9 @@ def main():
         current_theme = st.session_state.theme
         theme_label = "🌙 Dark Mode" if current_theme == 'light' else "☀️ Light Mode"
         st.button(theme_label, on_click=toggle_theme)
+    
+    # Apply theme AFTER st.set_page_config
+    apply_theme()
     
     # Create sidebar filters
     filters = create_sidebar_filters(RSS_FEEDS)
