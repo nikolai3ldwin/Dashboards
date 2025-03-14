@@ -5,6 +5,7 @@ Indo-Pacific Dashboard - Main application file
 A Streamlit dashboard for monitoring and analyzing current events in the Indo-Pacific region.
 """
 
+# Imports
 import streamlit as st
 import datetime
 import pandas as pd
