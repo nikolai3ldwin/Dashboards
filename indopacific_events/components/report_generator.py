@@ -8,10 +8,10 @@ import streamlit as st
 import pandas as pd
 import datetime
 from datetime import timedelta
-import markdown
 import os
 import json
 from collections import Counter
+import random
 
 class ReportGenerator:
     """
@@ -81,18 +81,22 @@ class ReportGenerator:
                               if any(cat in a.get('categories', {}) for cat in included_categories)]
                               
         # Further filter by countries if needed
-        if included_countries:
+        if included_countries and 'All' not in included_countries:
             # This assumes country info is in the text or in some field
             filtered_articles = [a for a in filtered_articles 
                               if any(country.lower() in a.get('summary', '').lower() 
                                      for country in included_countries)]
         
+        # If no articles after filtering, return a message
+        if not filtered_articles:
+            return f"## No articles available for the selected filters.\n\nPlease adjust your filters or time period."
+        
         # Generate report based on type
         if report_type == "summary":
             return self._generate_summary_report(filtered_articles, title)
-        elif report_type == "security":
+        elif report_type == "security-focused":
             return self._generate_security_report(filtered_articles, title)
-        elif report_type == "economic":
+        elif report_type == "economic-focused":
             return self._generate_economic_report(filtered_articles, title)
         else:
             return self._generate_comprehensive_report(filtered_articles, title)
@@ -692,8 +696,51 @@ class ReportGenerator:
     
     def export_report_as_html(self, report_content):
         """Convert markdown report to HTML"""
-        # Simple conversion using the markdown module
-        html_content = markdown.markdown(report_content)
+        # Simple conversion - you may want to use a dedicated library like markdown2 for better results
+        html_content = ""
+        
+        # Very simple markdown conversion
+        lines = report_content.split('\n')
+        for line in lines:
+            # Convert headers
+            if line.startswith('# '):
+                html_content += f"<h1>{line[2:]}</h1>\n"
+            elif line.startswith('## '):
+                html_content += f"<h2>{line[3:]}</h2>\n"
+            elif line.startswith('### '):
+                html_content += f"<h3>{line[4:]}</h3>\n"
+            # Convert lists
+            elif line.startswith('- '):
+                html_content += f"<li>{line[2:]}</li>\n"
+            elif line.startswith('1. ') or line.startswith('2. ') or line.startswith('3. '):
+                html_content += f"<li>{line[3:]}</li>\n"
+            # Convert links [text](url)
+            elif '[' in line and '](' in line and ')' in line:
+                # This is a very simple approach - a real implementation would use regex
+                parts = line.split('[')
+                for part in parts[1:]:  # Skip the first part (before any links)
+                    if '](' in part and ')' in part:
+                        text = part.split('](')[0]
+                        url = part.split('](')[1].split(')')[0]
+                        line = line.replace(f'[{text}]({url})', f'<a href="{url}">{text}</a>')
+                html_content += f"<p>{line}</p>\n"
+            # Convert emphasis
+            elif '**' in line:
+                # Again, very simple - real implementation would be more robust
+                parts = line.split('**')
+                result = ''
+                for i, part in enumerate(parts):
+                    if i % 2 == 1:  # Odd indices are inside ** **
+                        result += f"<strong>{part}</strong>"
+                    else:
+                        result += part
+                html_content += f"<p>{result}</p>\n"
+            # Empty lines become paragraph breaks
+            elif line.strip() == '':
+                html_content += "<br>\n"
+            # Default - just a paragraph
+            else:
+                html_content += f"<p>{line}</p>\n"
         
         # Add basic styling
         styled_html = f"""
@@ -853,7 +900,7 @@ class ReportGenerator:
             report_params = {
                 "title": report_title,
                 "report_type": report_type.lower(),
-                "time_period": time_period.split(" ")[-1].lower(),
+                "time_period": time_period.split(" ")[-1].lower() if time_period != "All Time" else None,
                 "included_categories": []
             }
             
@@ -887,28 +934,26 @@ class ReportGenerator:
             # Export options
             col1, col2 = st.columns(2)
             with col1:
-                if st.button("Download as Markdown"):
-                    # Save to file and provide download
-                    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
-                    file_name = f"indo_pacific_report_{timestamp}.md"
-                    
-                    st.download_button(
-                        label="Download Report",
-                        data=report_content,
-                        file_name=file_name,
-                        mime="text/markdown"
-                    )
+                # Download as Markdown
+                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
+                file_name = f"indo_pacific_report_{timestamp}.md"
+                
+                st.download_button(
+                    label="Download as Markdown",
+                    data=report_content,
+                    file_name=file_name,
+                    mime="text/markdown"
+                )
             
             with col2:
-                if st.button("Download as HTML"):
-                    # Convert to HTML and provide download
-                    html_content = self.export_report_as_html(report_content)
-                    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
-                    file_name = f"indo_pacific_report_{timestamp}.html"
-                    
-                    st.download_button(
-                        label="Download HTML Report",
-                        data=html_content,
-                        file_name=file_name,
-                        mime="text/html"
-                    )
+                # Download as HTML
+                html_content = self.export_report_as_html(report_content)
+                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
+                html_file_name = f"indo_pacific_report_{timestamp}.html"
+                
+                st.download_button(
+                    label="Download as HTML",
+                    data=html_content,
+                    file_name=html_file_name,
+                    mime="text/html"
+                )
