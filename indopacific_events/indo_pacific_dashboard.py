@@ -1,6 +1,6 @@
 # indo_pacific_dashboard.py
 """
-Indo-Pacific Dashboard - Main application file
+Indo-Pacific Dashboard
 
 A Streamlit dashboard for monitoring and analyzing current events in the Indo-Pacific region.
 """
@@ -16,10 +16,10 @@ import time
 import logging
 import datetime
 
-
 # Ensure the necessary directories exist
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 os.makedirs(os.path.join(SCRIPT_DIR, "data", "static", "images"), exist_ok=True)
+os.makedirs(os.path.join(SCRIPT_DIR, "reports"), exist_ok=True)  
 
 # Add current directory to path if needed
 if SCRIPT_DIR not in sys.path:
@@ -28,6 +28,10 @@ if SCRIPT_DIR not in sys.path:
 # Initialize the theme state before any st commands
 if 'theme' not in st.session_state:
     st.session_state.theme = 'light'
+
+# Initialize the current view state
+if 'current_view' not in st.session_state:
+    st.session_state.current_view = 'dashboard'
 
 # This MUST be the first Streamlit command
 st.set_page_config(
@@ -73,6 +77,9 @@ try:
     # Import UI components
     from components.filters import create_sidebar_filters
     from components.article_card import display_article
+    
+    # Import the NEW report generator component
+    from components.report_generator import ReportGenerator
     
     # Constants
     FILLER_IMAGE_PATH = os.path.join(SCRIPT_DIR, "data", "static", "images", "indo_pacific_filler_pic.jpg")
@@ -173,7 +180,6 @@ def get_category_analysis(content):
     # Return only categories that have at least one hit
     return {k: v for k, v in categories.items() if v > 0}
 
-# This function will be cached to improve performance
 @st.cache_data(ttl=7200)  # Cache for 2 hours
 def get_article_data(selected_feeds, filters):
     """
@@ -281,71 +287,45 @@ def get_article_data(selected_feeds, filters):
 
     return all_articles
 
-# Function to display logs in debug mode
-def display_logs():
-    """Display recent logs in the debug section"""
-    with st.expander("View Error Logs"):
-        if os.path.exists(log_file):
-            with open(log_file, 'r') as f:
-                log_content = f.readlines()
-                
-            # Filter to show only warnings and errors
-            error_logs = [line for line in log_content if 'ERROR' in line or 'WARNING' in line]
-            
-            # Show the most recent logs (limited to 50 for performance)
-            recent_logs = error_logs[-50:] if len(error_logs) > 50 else error_logs
-            
-            # Display error logs with formatting
-            st.text_area("Recent Errors and Warnings", value="".join(recent_logs), height=300)
-            
-            # Add log management options
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("Clear Logs"):
-                    try:
-                        # Backup the log file before clearing
-                        backup_file = os.path.join(
-                            log_dir, 
-                            f"dashboard_{datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')}_backup.log"
-                        )
-                        with open(log_file, 'r') as src, open(backup_file, 'w') as dst:
-                            dst.write(src.read())
-                        
-                        # Clear the log file
-                        with open(log_file, 'w') as f:
-                            f.write(f"Log cleared at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                        
-                        st.success("Logs cleared successfully")
-                        st.experimental_rerun()
-                    except Exception as e:
-                        st.error(f"Error clearing logs: {str(e)}")
-            
-            with col2:
-                if st.button("Download Logs"):
-                    try:
-                        with open(log_file, 'r') as f:
-                            log_content = f.read()
-                        
-                        st.download_button(
-                            label="Download Log File",
-                            data=log_content,
-                            file_name=f"dashboard_logs_{datetime.datetime.now().strftime('%Y-%m-%d')}.log",
-                            mime="text/plain"
-                        )
-                    except Exception as e:
-                        st.error(f"Error preparing logs for download: {str(e)}")
-        else:
-            st.info("No log file found for today.")
+# NEW function to render the reports view
+def render_reports_view(all_articles):
+    """
+    Render the reports page with report generation functionality
+    
+    Parameters:
+    -----------
+    all_articles : list
+        List of processed article dictionaries
+    """
+    st.title("Indo-Pacific Analysis Reports")
+    
+    st.markdown("""
+    Generate comprehensive analytical reports based on the aggregated news data.
+    These reports include sentiment analysis, key developments, and regional trends.
+    """)
+    
+    # Create a report generator instance
+    report_generator = ReportGenerator(all_articles)
+    
+    # Create the UI for the report generator
+    report_generator.create_report_ui()
 
 @measure_time
 def main():
     # Create a container to hold the entire dashboard (for hiding errors)
     with st.container():
         # Add header
-        header_cols = st.columns([3, 1])
+        header_cols = st.columns([3, 1, 1])
         with header_cols[0]:
             st.title("Indo-Pacific Current Events Dashboard")
         with header_cols[1]:
+            # Add view toggle button
+            current_view = st.session_state.current_view
+            view_label = "📊 Dashboard View" if current_view == 'reports' else "📑 Reports View"
+            if st.button(view_label):
+                st.session_state.current_view = 'dashboard' if current_view == 'reports' else 'reports'
+                st.experimental_rerun()
+        with header_cols[2]:
             # Add theme toggle button
             current_theme = st.session_state.theme
             theme_label = "🌙 Dark Mode" if current_theme == 'light' else "☀️ Light Mode"
@@ -369,6 +349,9 @@ def main():
             
             # Get cached article data
             all_articles = get_article_data(selected_feeds, filters)
+            
+            # Store articles in session state for reports
+            st.session_state.all_articles = all_articles
             
             # Clear status message once loaded
             status_container.empty()
@@ -396,117 +379,112 @@ def main():
                     all_articles.sort(key=lambda x: x['categories'].get(filters['selected_topic'], 0), reverse=True)
                 else:
                     all_articles.sort(key=lambda x: len(x['categories']), reverse=True)
-                    
-        # Display metrics
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric("Total Articles", len(all_articles))
-        with col2:
-            avg_importance = round(sum(a['importance'] for a in all_articles) / max(len(all_articles), 1), 1)
-            st.metric("Average Importance", f"{avg_importance}/5")
-        with col3:
-            topic_counts = {}
-            for article in all_articles:
-                for category in article['categories']:
-                    topic_counts[category] = topic_counts.get(category, 0) + 1
-            top_topic = max(topic_counts.items(), key=lambda x: x[1])[0] if topic_counts else "None"
-            st.metric("Top Topic", top_topic)
-        with col4:
-            recent_date = max([a['date'] for a in all_articles], default=datetime.datetime.now())
-            st.metric("Most Recent", recent_date.strftime("%Y-%m-%d %H:%M"))
         
-        # Set up pagination
-        articles_per_page = 5  # Limiting cards per page
-        
-        # Initialize page number if not already set
-        if 'page_number' not in st.session_state:
-            st.session_state.page_number = 0
-        
-        # Calculate total number of pages
-        total_pages = (len(all_articles) - 1) // articles_per_page + 1
-        
-        # Page navigation
-        st.markdown("### Articles")
-        
-        # Navigation buttons
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col1:
-            if st.button("← Previous Page", disabled=st.session_state.page_number <= 0):
-                st.session_state.page_number -= 1
-                st.experimental_rerun()
-        
-        with col2:
-            # Page indicator
-            st.markdown(f"<div style='text-align: center'>Page {st.session_state.page_number + 1} of {total_pages}</div>", unsafe_allow_html=True)
-        
-        with col3:
-            if st.button("Next Page →", disabled=st.session_state.page_number >= total_pages - 1):
-                st.session_state.page_number += 1
-                st.experimental_rerun()
-        
-        # Calculate slice for current page
-        start_idx = st.session_state.page_number * articles_per_page
-        end_idx = min(start_idx + articles_per_page, len(all_articles))
-        
-        # Display current page of articles
-        for i, article in enumerate(all_articles[start_idx:end_idx]):
-            try:
-                display_article(article, get_image(article['image_url'] or FILLER_IMAGE_PATH))
-            except Exception as e:
-                logger.error(f"Error displaying article: {str(e)}")
-                continue
-        
-        # Bottom navigation buttons
-        st.markdown("---")
-        
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col1:
-            if st.button("← Previous Page", key="prev_bottom", disabled=st.session_state.page_number <= 0):
-                st.session_state.page_number -= 1
-                st.experimental_rerun()
-        
-        with col2:
-            # Page indicator
-            st.markdown(f"<div style='text-align: center'>Page {st.session_state.page_number + 1} of {total_pages}</div>", unsafe_allow_html=True)
-        
-        with col3:
-            if st.button("Next Page →", key="next_bottom", disabled=st.session_state.page_number >= total_pages - 1):
-                st.session_state.page_number += 1
-                st.experimental_rerun()
-        
-        # Footer
-        st.markdown("---")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown("Dashboard created with Streamlit - Data sourced from various RSS feeds")
-        with col2:
-            st.markdown(f"Last updated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        # Choose which view to display
+        if st.session_state.current_view == 'reports':
+            # Show the reports view
+            render_reports_view(all_articles)
+        else:
+            # Original dashboard view - display metrics
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Total Articles", len(all_articles))
+            with col2:
+                avg_importance = round(sum(a['importance'] for a in all_articles) / max(len(all_articles), 1), 1)
+                st.metric("Average Importance", f"{avg_importance}/5")
+            with col3:
+                topic_counts = {}
+                for article in all_articles:
+                    for category in article['categories']:
+                        topic_counts[category] = topic_counts.get(category, 0) + 1
+                top_topic = max(topic_counts.items(), key=lambda x: x[1])[0] if topic_counts else "None"
+                st.metric("Top Topic", top_topic)
+            with col4:
+                recent_date = max([a['date'] for a in all_articles], default=datetime.datetime.now())
+                st.metric("Most Recent", recent_date.strftime("%Y-%m-%d %H:%M"))
             
-        # Debug mode toggle
-        with st.expander("Advanced Options"):
-            debug_mode = st.checkbox("Debug Mode", value=st.session_state.get('debug_mode', False))
-            st.session_state.debug_mode = debug_mode
+            # Set up pagination
+            articles_per_page = 5  # Limiting cards per page
             
-            if debug_mode:
-                # Display logs
-                display_logs()
-                
-                st.write("Feed Sources:")
-                for url, name in RSS_FEEDS:
-                    st.write(f"- {name}: {url}")
-                
-                if st.button("Reset All Settings"):
-                    for key in list(st.session_state.keys()):
-                        del st.session_state[key]
+            # Initialize page number if not already set
+            if 'page_number' not in st.session_state:
+                st.session_state.page_number = 0
+            
+            # Calculate total number of pages
+            total_pages = (len(all_articles) - 1) // articles_per_page + 1
+            
+            # Page navigation
+            st.markdown("### Articles")
+            
+            # Navigation buttons
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col1:
+                if st.button("← Previous Page", disabled=st.session_state.page_number <= 0):
+                    st.session_state.page_number -= 1
                     st.experimental_rerun()
-
-# Use this pattern to suppress Streamlit's default exception handling
-try:
-    if __name__ == "__main__":
-        main()
-except Exception as e:
-    logger.error(f"Unhandled exception in main app: {str(e)}")
-    with open(os.path.join(log_dir, "error.txt"), "w") as f:
-        f.write(f"App crashed at {datetime.datetime.now()}: {str(e)}")
-    st.error("An error occurred. Please check the logs for details.")
+            
+            with col2:
+                # Page indicator
+                st.markdown(f"<div style='text-align: center'>Page {st.session_state.page_number + 1} of {total_pages}</div>", unsafe_allow_html=True)
+            
+            with col3:
+                if st.button("Next Page →", disabled=st.session_state.page_number >= total_pages - 1):
+                    st.session_state.page_number += 1
+                    st.experimental_rerun()
+            
+            # Calculate slice for current page
+            start_idx = st.session_state.page_number * articles_per_page
+            end_idx = min(start_idx + articles_per_page, len(all_articles))
+            
+            # Display current page of articles
+            for i, article in enumerate(all_articles[start_idx:end_idx]):
+                try:
+                    display_article(article, get_image(article['image_url'] or FILLER_IMAGE_PATH))
+                except Exception as e:
+                    logger.error(f"Error displaying article: {str(e)}")
+                    continue
+            
+            # Bottom navigation buttons
+            st.markdown("---")
+            
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col1:
+                if st.button("← Previous Page", key="prev_bottom", disabled=st.session_state.page_number <= 0):
+                    st.session_state.page_number -= 1
+                    st.experimental_rerun()
+            
+            with col2:
+                # Page indicator
+                st.markdown(f"<div style='text-align: center'>Page {st.session_state.page_number + 1} of {total_pages}</div>", unsafe_allow_html=True)
+            
+            with col3:
+                if st.button("Next Page →", key="next_bottom", disabled=st.session_state.page_number >= total_pages - 1):
+                    st.session_state.page_number += 1
+                    st.experimental_rerun()
+            
+            # Footer
+            st.markdown("---")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("Dashboard created with Streamlit - Data sourced from various RSS feeds")
+            with col2:
+                st.markdown(f"Last updated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+                
+            # Debug mode toggle
+            with st.expander("Advanced Options"):
+                debug_mode = st.checkbox("Debug Mode", value=st.session_state.get('debug_mode', False))
+                st.session_state.debug_mode = debug_mode
+                
+                if debug_mode:
+                    # Display logs
+                    display_logs()
+                    
+                    st.write("Feed Sources:")
+                    for url, name in RSS_FEEDS:
+                        st.write(f"- {name}: {url}")
+                    
+                    if st.button("Reset All Settings"):
+                        for key in list(st.session_state.keys()):
+                            del st.session_state[key]
+                        st.experimental_rerun()
