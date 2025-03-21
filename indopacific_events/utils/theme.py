@@ -1,7 +1,7 @@
 # utils/theme.py
 """
 Theme manager for the Indo-Pacific Dashboard.
-Provides functionality to switch between light and dark mode.
+Provides functionality to switch between light and dark mode with improved contrast.
 """
 
 import streamlit as st  # Must import streamlit at the top
@@ -111,7 +111,7 @@ def apply_theme():
     <style>
         .main {
             background-color: #1E1E1E;
-            color: #E0E0E0;
+            color: #FFFFFF;  /* Improved text contrast */
         }
         .stApp {
             background-color: #1E1E1E;
@@ -135,22 +135,24 @@ def apply_theme():
         .css-hxt7ib {
             padding-top: 1rem;
         }
+        /* Higher contrast for links */
         .stMarkdown a {
-            color: #58A6FF;
+            color: #6BBAFF;
+            font-weight: 500;
         }
         .stTabs [data-baseweb="tab-list"] {
             background-color: #2D2D2D;
         }
         .stTabs [data-baseweb="tab"] {
-            color: #E0E0E0;
+            color: #FFFFFF;
         }
         .stTabs [aria-selected="true"] {
             background-color: #3D3D3D;
         }
-        /* Improved button styling for dark mode */
+        /* Improved button styling for dark mode with higher contrast */
         button, .stButton>button {
             background-color: #FFC107;
-            color: #1E1E1E;
+            color: #000000;
             border: none;
             border-radius: 5px;
             padding: 8px 16px;
@@ -165,7 +167,7 @@ def apply_theme():
         /* Sidebar toggle indicator */
         [data-testid="collapsedControl"] {
             background-color: #FFC107;
-            color: #1E1E1E;
+            color: #000000;
             border-radius: 50%;
             width: 36px;
             height: 36px;
@@ -179,7 +181,7 @@ def apply_theme():
             position: absolute;
             right: 45px;
             background: #FFC107;
-            color: #1E1E1E;
+            color: #000000;
             padding: 3px 8px;
             border-radius: 4px;
             font-size: 12px;
@@ -192,18 +194,41 @@ def apply_theme():
         [data-testid="collapsedControl"]:hover:after {
             opacity: 1;
         }
-        /* Better contrast for pagination and other elements */
+        /* Better contrast for general text */
+        p, h1, h2, h3, h4, h5, h6, span, div {
+            color: #FFFFFF;
+        }
+        /* Improved metrics */
+        [data-testid="stMetricValue"] {
+            color: #FFFFFF;
+            font-weight: bold;
+        }
+        /* Form elements with better contrast */
+        .stTextInput>div>div>input, .stSelectbox>div>div>div {
+            background-color: #2D2D2D;
+            color: #FFFFFF;
+            border: 1px solid #4D4D4D;
+        }
+        /* Checkbox and radio buttons with better contrast */
+        .stCheckbox>div>div>div, .stRadio>div>div>div {
+            color: #FFFFFF;
+        }
+        /* Better contrast for expanders */
+        .streamlit-expanderHeader {
+            color: #FFFFFF;
+            background-color: #2D2D2D;
+        }
+        /* Improved contrast for dataframes and tables */
+        .stDataFrame {
+            color: #FFFFFF;
+        }
+        .stDataFrame [data-testid="stTable"] {
+            color: #FFFFFF;
+        }
+        /* Fix pagination text */
         .pagination {
-            color: #FFFFFF;
-            font-weight: 500;
-        }
-        .stTextInput>div>div>input {
-            color: #FFFFFF;
-            background-color: #2D2D2D;
-        }
-        .stSelectbox>div>div>div {
-            background-color: #2D2D2D;
-            color: #FFFFFF;
+            color: #FFFFFF !important;
+            font-weight: 500 !important;
         }
     </style>
     """
@@ -239,27 +264,3 @@ def create_theme_toggle():
     # Create a Streamlit button to capture the click event
     if button_container.button("Toggle Theme", key="theme-toggle", on_click=toggle_theme):
         st.experimental_rerun()
-        
-def get_moon_svg():
-    """Get moon SVG icon for dark mode toggle."""
-    return """
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-moon">
-        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-    </svg>
-    """
-
-def get_sun_svg():
-    """Get sun SVG icon for light mode toggle."""
-    return """
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-sun">
-        <circle cx="12" cy="12" r="5"></circle>
-        <line x1="12" y1="1" x2="12" y2="3"></line>
-        <line x1="12" y1="21" x2="12" y2="23"></line>
-        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-        <line x1="1" y1="12" x2="3" y2="12"></line>
-        <line x1="21" y1="12" x2="23" y2="12"></line>
-        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-    </svg>
-    """
