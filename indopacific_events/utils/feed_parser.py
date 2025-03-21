@@ -1,6 +1,6 @@
 # utils/feed_parser.py
 """
-Optimized version of feed parser with faster handling of feed errors.
+Optimized version of feed parser with better error handling for the Indo-Pacific Dashboard.
 """
 
 import streamlit as st  # Import Streamlit at the top
@@ -63,8 +63,8 @@ def fetch_rss_feeds(feed_list):
     """
     results = {}
     
-    # Use thread pool to fetch feeds in parallel
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+    # Use thread pool to fetch feeds in parallel but with fewer workers to avoid overloading
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
         # Create a dictionary of future to source_name
         future_to_source = {
             executor.submit(fetch_single_feed_fast, url): (url, source_name) 
@@ -90,7 +90,7 @@ def fetch_rss_feeds(feed_list):
 
 def fetch_single_feed_fast(url):
     """
-    Faster version of feed fetching with reduced retries and timeouts.
+    Improved version of feed fetching with better error handling and longer timeouts.
     
     Parameters:
     -----------
@@ -102,18 +102,19 @@ def fetch_single_feed_fast(url):
     dict
         Processed feed data with entries
     """
-    max_retries = 1  # Reduced retries for speed
-    timeout = 5  # Reduced timeout for speed
+    max_retries = 2  # Increased from 1
+    timeout = 10     # Increased from 5
     domain = urlparse(url).netloc
     
     # Check if we have a mock feed already cached
-    cache_key = f"mock_{domain}"
     if url in _mock_feed_cache:
         return _mock_feed_cache[url]
     
     # List of user agents to rotate between
     user_agents = [
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Safari/605.1.15',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36 Edg/98.0.1108.56'
     ]
     
     for attempt in range(max_retries):
@@ -127,7 +128,7 @@ def fetch_single_feed_fast(url):
                 'Accept': 'application/rss+xml, application/xml, text/xml, application/atom+xml'
             }
             
-            # Direct approach first (faster)
+            # Try direct approach with feedparser first (faster)
             feed = feedparser.parse(url, agent=user_agent)
             
             # Check if feed was successfully parsed and has entries
@@ -140,8 +141,30 @@ def fetch_single_feed_fast(url):
                 
                 return {'entries': entries, 'status': getattr(feed, 'status', 200)}
             
-            # If we got here, feeding parsing failed - try with requests as fallback
+            # If direct approach failed, try with requests as fallback
             try:
+                # Disable SSL verification for problematic sites
+                response = requests.get(url, headers=headers, timeout=timeout, verify=False)
+                response.raise_for_status()
+                feed = feedparser.parse(response.content)
+                
+                if feed.entries:
+                    entries = []
+                    for entry in feed.entries:
+                        processed_entry = process_entry(entry)
+                        entries.append(processed_entry)
+                    
+                    return {'entries': entries, 'status': response.status_code}
+            except requests.exceptions.RequestException as re:
+                logger.warning(f"Request to {domain} failed: {str(re)}")
+                # Continue to next approach
+            
+            # If still no success, try one more approach with different content type
+            try:
+                headers = {
+                    'User-Agent': user_agent,
+                    'Accept': 'text/html,application/xhtml+xml'
+                }
                 response = requests.get(url, headers=headers, timeout=timeout, verify=False)
                 response.raise_for_status()
                 feed = feedparser.parse(response.content)
@@ -163,29 +186,33 @@ def fetch_single_feed_fast(url):
             
         except Exception as e:
             if attempt < max_retries - 1:
-                time.sleep(0.5)  # Brief delay between retries
+                # More substantial delay between retries
+                time.sleep(1.0)
                 continue
             else:
                 # Create and cache a mock feed
+                logger.error(f"All approaches failed for {domain}: {str(e)}")
                 mock_feed = create_mock_feed(url, domain)
                 _mock_feed_cache[url] = mock_feed
                 return mock_feed
 
 def create_mock_feed(url, domain):
     """
-    Creates a minimal mock feed for problematic sources
-    to allow the dashboard to function.
+    Creates a more robust mock feed for problematic sources
+    to allow the dashboard to function with placeholder content.
     """
     current_time = datetime.datetime.now()
+    
+    # Create a more informative mock entry
     mock_entry = {
         'title': f"Unable to fetch content from {domain}",
         'link': url,
-        'summary': f"This is a placeholder entry. The RSS feed at {url} could not be accessed.",
+        'summary': f"This is a placeholder entry. The RSS feed at {url} could not be accessed. This could be due to temporary issues with the source, network connectivity, or changes to their RSS feed structure.",
         'published_parsed': current_time.timetuple(),
         'media_content': []
     }
     
-    # Log the mock feed creation instead of displaying it
+    # Log the mock feed creation
     logger.warning(f"Created mock feed for {domain} as feed was unavailable")
     
     return {'entries': [mock_entry], 'status': 0, 'is_mock': True}
@@ -250,21 +277,27 @@ def process_entry(entry):
     elif hasattr(entry, 'content') and entry.content:
         for content in entry.content:
             if content.get('type') == 'text/html':
-                soup = BeautifulSoup(content.value, 'html.parser')
-                img_tags = soup.find_all('img')
-                for img in img_tags:
-                    if img.get('src'):
-                        media_content.append({'url': img.get('src')})
-                        break  # Just get the first image
+                try:
+                    soup = BeautifulSoup(content.value, 'html.parser')
+                    img_tags = soup.find_all('img')
+                    for img in img_tags:
+                        if img.get('src'):
+                            media_content.append({'url': img.get('src')})
+                            break  # Just get the first image
+                except Exception as e:
+                    logger.warning(f"Error parsing content HTML: {str(e)}")
     
     # Look in summary for images as last resort
     elif not media_content and hasattr(entry, 'summary'):
-        soup = BeautifulSoup(entry.summary, 'html.parser')
-        img_tags = soup.find_all('img')
-        for img in img_tags:
-            if img.get('src'):
-                media_content.append({'url': img.get('src')})
-                break  # Just get the first image
+        try:
+            soup = BeautifulSoup(entry.summary, 'html.parser')
+            img_tags = soup.find_all('img')
+            for img in img_tags:
+                if img.get('src'):
+                    media_content.append({'url': img.get('src')})
+                    break  # Just get the first image
+        except Exception as e:
+            logger.warning(f"Error parsing summary HTML: {str(e)}")
 
     return {
         'title': title,
