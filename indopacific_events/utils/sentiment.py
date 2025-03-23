@@ -1,6 +1,6 @@
 # sentiment.py
 """
-Sentiment analysis utilities for the Indo-Pacific Dashboard.
+Improved sentiment analysis utilities for the Indo-Pacific Dashboard.
 """
 
 import nltk
@@ -30,15 +30,39 @@ def analyze_sentiment(text):
     if not text:
         return {}
     
-    # Key entities to track sentiment for
+    # Key entities to track sentiment for - we'll use a comprehensive list
+    # of countries and regional actors in the Indo-Pacific
     key_entities = {
         'US': ['US', 'United States', 'America', 'Washington', 'Biden', 'Americans'],
         'China': ['China', 'Chinese', 'Beijing', 'CCP', 'Xi Jinping', 'PRC'],
         'Australia': ['Australia', 'Australian', 'Canberra', 'Albanese'],
         'Japan': ['Japan', 'Japanese', 'Tokyo', 'Kishida'],
         'India': ['India', 'Indian', 'New Delhi', 'Modi'],
-        'ASEAN': ['ASEAN', 'Southeast Asia', 'Southeast Asian'],
-        'Pacific Islands': ['Pacific Islands', 'Pacific Island Countries', 'PIF', 'Forum']
+        'Russia': ['Russia', 'Russian', 'Moscow', 'Putin'],
+        'South Korea': ['South Korea', 'ROK', 'Seoul'],
+        'North Korea': ['North Korea', 'DPRK', 'Pyongyang', 'Kim Jong Un'],
+        'Taiwan': ['Taiwan', 'Taiwanese', 'Taipei'],
+        'Philippines': ['Philippines', 'Filipino', 'Manila'],
+        'Indonesia': ['Indonesia', 'Indonesian', 'Jakarta'],
+        'Malaysia': ['Malaysia', 'Malaysian', 'Kuala Lumpur'],
+        'Vietnam': ['Vietnam', 'Vietnamese', 'Hanoi'],
+        'Thailand': ['Thailand', 'Thai', 'Bangkok'],
+        'Singapore': ['Singapore', 'Singaporean'],
+        'Cambodia': ['Cambodia', 'Cambodian', 'Phnom Penh'],
+        'Myanmar': ['Myanmar', 'Burma', 'Burmese', 'Yangon', 'Naypyidaw'],
+        'Laos': ['Laos', 'Lao', 'Vientiane'],
+        'New Zealand': ['New Zealand', 'NZ', 'Wellington'],
+        'Pakistan': ['Pakistan', 'Pakistani', 'Islamabad'],
+        'Bangladesh': ['Bangladesh', 'Bangladeshi', 'Dhaka'],
+        'Sri Lanka': ['Sri Lanka', 'Sri Lankan', 'Colombo'],
+        'Nepal': ['Nepal', 'Nepalese', 'Kathmandu'],
+        'Papua New Guinea': ['Papua New Guinea', 'PNG', 'Port Moresby'],
+        'Fiji': ['Fiji', 'Fijian', 'Suva'],
+        'Solomon Islands': ['Solomon Islands', 'Honiara'],
+        'New Caledonia': ['New Caledonia', 'Nouméa'],
+        'Wallis and Futuna': ['Wallis and Futuna', 'Wallis', 'Futuna'],
+        'ASEAN': ['ASEAN', 'Association of Southeast Asian Nations', 'Southeast Asia', 'Southeast Asian'],
+        'Pacific Islands': ['Pacific Islands', 'Pacific Island Countries', 'PIF', 'Forum', 'Pacific Forum']
     }
     
     # Pre-process the text
@@ -47,8 +71,9 @@ def analyze_sentiment(text):
     # Initialize sentiment results
     sentiment_results = {}
     
-    # Analyze overall sentiment
+    # Analyze overall sentiment first
     overall_sentiment = TextBlob(text).sentiment.polarity
+    sentiment_results['Overall'] = round(overall_sentiment, 2)
     
     # For each entity, analyze sentences containing references to it
     for entity, terms in key_entities.items():
@@ -67,13 +92,12 @@ def analyze_sentiment(text):
         if entity_sentences:
             entity_sentiment = sum(TextBlob(sentence).sentiment.polarity for sentence in entity_sentences) / len(entity_sentences)
             sentiment_results[entity] = round(entity_sentiment, 2)
-        else:
-            # If not mentioned, don't include in results
-            pass
     
-    # Handle case where no entities were found
-    if not sentiment_results:
-        sentiment_results['Overall'] = round(overall_sentiment, 2)
+    # Add regional sentiment if we have enough data
+    if len(sentiment_results) > 2:  # If we have more than just Overall and one entity
+        entity_scores = [score for entity, score in sentiment_results.items() if entity != 'Overall']
+        if entity_scores:
+            sentiment_results['Regional'] = round(sum(entity_scores) / len(entity_scores), 2)
     
     return sentiment_results
 
