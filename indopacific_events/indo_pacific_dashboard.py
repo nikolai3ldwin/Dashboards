@@ -1,7 +1,6 @@
 # indo_pacific_dashboard.py
 """
-Indo-Pacific Dashboard
-and include report generation capabilities.
+Improved Indo-Pacific Dashboard with better UI and UX
 """
 
 # Third-party imports
@@ -14,12 +13,12 @@ import sys
 import time
 import logging
 import datetime
-import random
+import hashlib
 
 # Ensure the necessary directories exist
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 os.makedirs(os.path.join(SCRIPT_DIR, "data", "static", "images"), exist_ok=True)
-os.makedirs(os.path.join(SCRIPT_DIR, "reports"), exist_ok=True)  # Add reports directory
+os.makedirs(os.path.join(SCRIPT_DIR, "reports"), exist_ok=True)
 
 # Add current directory to path if needed
 if SCRIPT_DIR not in sys.path:
@@ -44,12 +43,70 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Add CSS to ensure hamburger menu always shows
+# Add CSS to ensure hamburger menu always shows and is properly styled
 st.markdown("""
 <style>
+/* Always show hamburger menu with proper styling */
 [data-testid="collapsedControl"] {
     display: block !important;
-    color: #262730 !important;
+    visibility: visible !important;
+}
+
+/* Hamburger menu style - 3 lines instead of arrow */
+[data-testid="collapsedControl"] {
+    border: none !important;
+    background-color: transparent !important;
+}
+
+/* Dark mode improvements */
+@media (prefers-color-scheme: dark) {
+    .stButton>button {
+        background-color: #4F8BF9 !important;
+        color: white !important;
+    }
+    
+    .stSelectbox>div>div>div {
+        background-color: #2D2D2D !important;
+        color: white !important;
+        border: 1px solid #4D4D4D !important;
+    }
+    
+    /* Make sidebar buttons more visible in dark mode */
+    .sidebar .stButton>button {
+        background-color: #FFC107 !important;
+        color: black !important;
+    }
+}
+
+/* Remove fixed sidebar height to allow scrolling */
+section[data-testid="stSidebar"] {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+}
+
+/* Improve sentiment analysis display - make it always visible */
+.sentiment-section {
+    margin-top: 10px;
+    margin-bottom: 10px;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+}
+
+/* Improved filter section */
+.filter-section {
+    margin-bottom: 20px;
+    padding: 10px;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+/* Dark mode filter section */
+@media (prefers-color-scheme: dark) {
+    .filter-section {
+        background-color: #2D2D2D;
+    }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -99,9 +156,204 @@ try:
     from data.keywords import IMPORTANT_KEYWORDS, CATEGORY_WEIGHTS
     from data.rss_sources import RSS_FEEDS
     
-    # Import UI components
-    from components.filters import create_sidebar_filters
+    # Import UI components - we'll use a modified version
     from components.article_card import display_article
+    
+    # Modified version of sidebar filters to match requirements
+    def create_sidebar_filters(rss_feeds):
+        """
+        Create and handle all sidebar filters for the dashboard with improved UI.
+        """
+        st.sidebar.title("Dashboard Filters")
+        
+        # Source selection with categorized layout
+        from data.rss_sources import SOURCE_CATEGORIES
+        
+        # Show expand/collapse all option
+        st.sidebar.markdown("### News Sources")
+        
+        all_sources = [source for _, source in rss_feeds]
+        
+        # Initialize with empty list if state doesn't exist
+        if 'selected_sources' not in st.session_state:
+            st.session_state.selected_sources = []
+        
+        # Add Select All / Clear All buttons
+        col1, col2 = st.sidebar.columns(2)
+        with col1:
+            if st.button("Select All", key="select_all_sources"):
+                st.session_state.selected_sources = all_sources.copy()
+        with col2:
+            if st.button("Clear All", key="clear_all_sources"):
+                st.session_state.selected_sources = []
+        
+        # Display source categories as expandable sections
+        selected_sources = []
+        for category, sources in SOURCE_CATEGORIES.items():
+            with st.sidebar.expander(f"{category} ({len(sources)})"):
+                for source in sources:
+                    if source in all_sources:
+                        is_selected = st.checkbox(
+                            source,
+                            value=source in st.session_state.selected_sources
+                        )
+                        if is_selected and source not in selected_sources:
+                            selected_sources.append(source)
+        
+        # Update session state
+        st.session_state.selected_sources = selected_sources
+        
+        # Topic filter with new categories
+        st.sidebar.markdown("### Topic Filters")
+        
+        topics = [
+            "All", 
+            "Political", 
+            "Military", 
+            "Civil Affairs", 
+            "Drug Proliferation",
+            "CWMD", 
+            "Business"
+        ]
+        
+        selected_topic = st.sidebar.selectbox(
+            "Select Topic Category",
+            topics
+        )
+        
+        # Country filter
+        countries = [
+            "All", 
+            "New Caledonia", 
+            "Wallis and Futuna", 
+            "China", 
+            "United States",
+            "Japan", 
+            "Australia", 
+            "India", 
+            "Indonesia", 
+            "Philippines", 
+            "Malaysia",
+            "Vietnam", 
+            "South Korea", 
+            "Taiwan", 
+            "Thailand",
+            "Cambodia", 
+            "Myanmar", 
+            "Papua New Guinea", 
+            "Fiji", 
+            "Solomon Islands",
+            "Vanuatu", 
+            "Samoa", 
+            "Tonga", 
+            "Cook Islands"
+        ]
+        
+        selected_country = st.sidebar.selectbox(
+            "Select Country/Region",
+            countries
+        )
+        
+        # Importance filter
+        st.sidebar.markdown("### Content Filters")
+        
+        min_importance = st.sidebar.slider(
+            "Minimum Importance Rating",
+            min_value=1,
+            max_value=5,
+            value=1,
+            help="Filter articles by their importance rating (1-5)"
+        )
+        
+        # Improved sentiment filter with generic country options
+        sentiment_options = [
+            "All", 
+            "Positive sentiment", 
+            "Negative sentiment",
+            "Neutral sentiment"
+        ]
+        
+        # Add dynamically generated country filters based on the most common entities
+        # in the sentiment analysis of recent articles
+        common_sentiment_entities = ["Regional", "Overall"]  # Default entities
+        
+        # This will be expanded dynamically as articles are processed
+        sentiment_filter = st.sidebar.selectbox(
+            "Sentiment Analysis",
+            sentiment_options
+        )
+        
+        # Sort options
+        sort_options = ["Date", "Importance", "Relevance"]
+        sort_by = st.sidebar.selectbox(
+            "Sort Results By",
+            sort_options
+        )
+        
+        # Keyword search
+        search_term = st.sidebar.text_input(
+            "Search for keywords",
+            help="Enter keywords to search across all articles"
+        )
+        
+        # Time period filter
+        time_periods = [
+            "All Time",
+            "Today",
+            "Past Week",
+            "Past Month",
+            "Past 3 Months"
+        ]
+        
+        time_filter = st.sidebar.selectbox(
+            "Time Period",
+            time_periods
+        )
+        
+        # Advanced options expander
+        with st.sidebar.expander("Advanced Options"):
+            # Display options
+            st.markdown("#### Display Options")
+            show_images = st.checkbox("Show Images", value=True)
+            show_sentiment = st.checkbox("Show Sentiment Analysis", value=True)
+            show_tags = st.checkbox("Show Tags", value=True)
+            
+            # Export options
+            st.markdown("#### Export Options")
+            export_format = st.selectbox(
+                "Export Format",
+                ["CSV", "JSON", "Excel"]
+            )
+            
+            if st.button("Export Results"):
+                st.info("Export functionality to be implemented")
+        
+        # About section
+        with st.sidebar.expander("About This Dashboard"):
+            st.markdown("""
+            This dashboard aggregates news from multiple sources 
+            across the Indo-Pacific region and categorizes them 
+            based on importance, topics, and sentiment.
+            
+            **Version**: 1.0.0
+            
+            **GitHub**: [Project Repository](https://github.com/yourusername/indo-pacific-dashboard)
+            """)
+        
+        # Return all filter settings as a dictionary
+        return {
+            "selected_sources": selected_sources,
+            "selected_topic": selected_topic,
+            "selected_country": selected_country,
+            "min_importance": min_importance,
+            "sentiment_filter": sentiment_filter,
+            "sort_by": sort_by,
+            "search_term": search_term,
+            "time_filter": time_filter,
+            "show_images": show_images,
+            "show_sentiment": show_sentiment,
+            "show_tags": show_tags
+        }
     
     # Import the report generator component
     try:
@@ -216,81 +468,6 @@ def get_category_analysis(content):
     # Return only categories that have at least one hit
     return {k: v for k, v in categories.items() if v > 0}
 
-def generate_fallback_articles():
-    """Generate fallback mock articles when feeds fail"""
-    logger.info("Generating fallback mock articles")
-    
-    # Create mock articles
-    mock_articles = []
-    sources = ["East Asia Forum", "Asia Pacific Report", "RNZ Pacific", 
-               "The Diplomat", "ASPI Strategist", "South China Morning Post"]
-    topics = ["military exercise", "trade agreement", "diplomatic visit", 
-              "security partnership", "territorial dispute", "naval deployment"]
-    countries = ["China", "Japan", "Australia", "United States", "India", 
-                 "Indonesia", "Philippines", "Malaysia", "Vietnam", "South Korea"]
-    
-    for i in range(15):  # Create 15 mock articles
-        # Create random date
-        days_ago = random.randint(0, 14)
-        article_date = datetime.datetime.now() - datetime.timedelta(days=days_ago)
-        
-        # Select random elements
-        source = random.choice(sources)
-        country1 = random.choice(countries)
-        country2 = random.choice([c for c in countries if c != country1])
-        topic = random.choice(topics)
-        
-        # Generate title
-        title = f"{country1} and {country2} announce new {topic}"
-        
-        # Generate summary
-        summary = (f"{country1} has announced a new {topic} with {country2}, "
-                  f"signaling closer cooperation between the two nations. "
-                  f"This development comes amid growing regional tensions and "
-                  f"changing dynamics in the Indo-Pacific region.")
-        
-        # Create mock category information
-        if "military" in topic or "security" in topic or "naval" in topic:
-            categories = {'Military': 2, 'Political': 1}
-        elif "trade" in topic or "economic" in topic:
-            categories = {'Business': 2, 'Political': 1}
-        elif "diplomatic" in topic:
-            categories = {'Political': 2, 'Civil Affairs': 1}
-        elif "territorial" in topic:
-            categories = {'Political': 2, 'Military': 1}
-        else:
-            categories = {'Political': 1, 'Business': 1}
-        
-        # Generate mock sentiment
-        sentiment = {
-            country1: round(random.uniform(-0.8, 0.8), 2),
-            country2: round(random.uniform(-0.8, 0.8), 2),
-            "US": round(random.uniform(-0.8, 0.8), 2) if random.random() > 0.5 else None
-        }
-        sentiment = {k: v for k, v in sentiment.items() if v is not None}
-        
-        # Generate tags
-        tags = topic.split() + [country1.lower(), country2.lower(), "indo-pacific"]
-        
-        article = {
-            'title': title,
-            'link': f"https://example.com/article{i}",
-            'date': article_date,
-            'summary': summary,
-            'tags': tags[:5],
-            'importance': random.randint(1, 5),
-            'sentiment': sentiment,
-            'source': source,
-            'image_url': None,
-            'categories': categories
-        }
-        
-        mock_articles.append(article)
-    
-    # Sort by date
-    mock_articles.sort(key=lambda x: x['date'], reverse=True)
-    return mock_articles
-
 @st.cache_data(ttl=7200)  # Cache for 2 hours
 def get_article_data(selected_feeds, filters):
     """
@@ -321,9 +498,9 @@ def get_article_data(selected_feeds, filters):
                     
                 for entry in feed['entries']:
                     try:
-                        # Skip mock entries if we're not in debug mode
+                        # Skip entries that indicate feed failures
                         title = entry.get('title', '')
-                        if 'Unable to fetch content' in title and not st.session_state.get('debug_mode', False):
+                        if 'Unable to fetch content' in title:
                             continue
                         
                         # Process the entry
@@ -350,19 +527,23 @@ def get_article_data(selected_feeds, filters):
                         importance = rate_importance(content, tags)
                         sentiment = analyze_sentiment(content)
                         
+                        # Add an 'Overall' sentiment if not present
+                        if sentiment and 'Overall' not in sentiment:
+                            sentiment_values = list(sentiment.values())
+                            if sentiment_values:
+                                sentiment['Overall'] = round(sum(sentiment_values) / len(sentiment_values), 2)
+                        
                         # Apply importance filter
                         if importance < filters['min_importance']:
                             continue
                         
                         # Apply sentiment filter
                         if filters['sentiment_filter'] != 'All':
-                            if filters['sentiment_filter'] == 'Positive towards US' and sentiment.get('US', 0) <= 0:
+                            if filters['sentiment_filter'] == 'Positive sentiment' and not any(v > 0.1 for v in sentiment.values()):
                                 continue
-                            if filters['sentiment_filter'] == 'Negative towards US' and sentiment.get('US', 0) >= 0:
+                            if filters['sentiment_filter'] == 'Negative sentiment' and not any(v < -0.1 for v in sentiment.values()):
                                 continue
-                            if filters['sentiment_filter'] == 'Positive towards China' and sentiment.get('China', 0) <= 0:
-                                continue
-                            if filters['sentiment_filter'] == 'Negative towards China' and sentiment.get('China', 0) >= 0:
+                            if filters['sentiment_filter'] == 'Neutral sentiment' and not any(-0.1 <= v <= 0.1 for v in sentiment.values()):
                                 continue
                         
                         # Apply keyword search
@@ -409,12 +590,101 @@ def get_article_data(selected_feeds, filters):
     except Exception as e:
         logger.error(f"Error fetching feeds: {str(e)}")
     
-    # If no articles were found, generate fallback mock articles
-    if not all_articles and not st.session_state.get('debug_mode', False):
-        logger.warning("No articles found from feeds, using fallback mock articles")
-        all_articles = generate_fallback_articles()
-    
     return all_articles
+
+# Improved article display function to show sentiment and tags inline (not hidden)
+def display_article_improved(article, image):
+    """
+    Display a single article in a card format with improved sentiment display.
+    
+    Parameters:
+    -----------
+    article : dict
+        Article data dictionary containing title, date, summary, etc.
+    image : PIL.Image
+        Image to display with the article
+    """
+    # Create a card with a border
+    with st.container():
+        st.markdown("---")
+        
+        # Two-column layout
+        col1, col2 = st.columns([1, 3])
+        
+        with col1:
+            # Display the image
+            st.image(image, use_column_width=True)
+            
+            # Display importance rating with stars
+            importance_stars = "⭐" * article['importance']
+            st.markdown(f"**Importance:** {importance_stars}")
+            
+            # Display source and date
+            st.markdown(f"**Source:** {article['source']}")
+            st.markdown(f"**Date:** {article['date'].strftime('%Y-%m-%d %H:%M')}")
+            
+            # Display categories
+            if article.get('categories'):
+                st.markdown("**Categories:**")
+                for category, count in article['categories'].items():
+                    st.markdown(f"- {category}: {count} mentions")
+        
+        with col2:
+            # Article title as link
+            st.markdown(f"## [{article['title']}]({article['link']})")
+            
+            # Summary
+            st.markdown(f"{article['summary']}")
+            
+            # Always display tags directly (not in expander)
+            if article.get('tags'):
+                st.markdown("**Tags:** " + ", ".join(article['tags']))
+            
+            # Always display sentiment analysis directly (not in expander)
+            if article.get('sentiment'):
+                st.markdown("**Sentiment Analysis:**")
+                
+                # Create a horizontal bar chart for sentiment
+                for entity, score in article['sentiment'].items():
+                    # Determine color based on sentiment
+                    color = "green" if score > 0 else "red" if score < 0 else "gray"
+                    
+                    # Calculate width percentage (convert -1 to 1 scale to 0-100%)
+                    width = abs(score) * 50  # 50% is neutral
+                    
+                    # Display horizontal bar
+                    st.markdown(
+                        f"""
+                        <div style="display: flex; align-items: center; margin-bottom: 5px;">
+                            <div style="width: 80px;">{entity}:</div>
+                            <div style="background-color: {color}; width: {width}%; 
+                                        height: 15px; border-radius: 3px;"></div>
+                            <div style="margin-left: 10px;">{score:.2f}</div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+            
+            # Call to action buttons
+            col_a, col_b, col_c = st.columns(3)
+            
+            # Create a unique key for each button based on multiple properties
+            unique_key = hashlib.md5(
+                f"{article['title']}{article['link']}{str(article['date'])}{article['source']}".encode()
+            ).hexdigest()[:12]
+            
+            with col_a:
+                st.button("Read Full Article", 
+                          key=f"read_{unique_key}", 
+                          help=f"Open {article['link']}")
+            with col_b:
+                st.button("Save for Later", 
+                          key=f"save_{unique_key}", 
+                          help="Save this article to your reading list")
+            with col_c:
+                st.button("Share", 
+                          key=f"share_{unique_key}", 
+                          help="Share this article")
 
 # Function to display logs in debug mode
 def display_logs():
@@ -472,7 +742,7 @@ def display_logs():
         else:
             st.info("No log file found for today.")
 
-# NEW function to render the reports view
+# Function to render the reports view
 def render_reports_view(all_articles):
     """
     Render the reports page with report generation functionality
@@ -488,201 +758,3 @@ def render_reports_view(all_articles):
     Generate comprehensive analytical reports based on the aggregated news data.
     These reports include sentiment analysis, key developments, and regional trends.
     """)
-    
-    # Create a report generator instance
-    report_generator = ReportGenerator(all_articles)
-    
-    # Create the UI for the report generator
-    report_generator.create_report_ui()
-
-@measure_time
-def main():
-    # Create a container to hold the entire dashboard (for hiding errors)
-    with st.container():
-        # Add header
-        header_cols = st.columns([3, 1, 1])
-        with header_cols[0]:
-            st.title("Indo-Pacific Current Events Dashboard")
-        with header_cols[1]:
-            # Add view toggle button
-            current_view = st.session_state.current_view
-            view_label = "📊 Dashboard View" if current_view == 'reports' else "📑 Reports View"
-            if st.button(view_label):
-                st.session_state.current_view = 'dashboard' if current_view == 'reports' else 'reports'
-                st.experimental_rerun()
-        with header_cols[2]:
-            # Add theme toggle button
-            current_theme = st.session_state.theme
-            theme_label = "🌙 Dark Mode" if current_theme == 'light' else "☀️ Light Mode"
-            st.button(theme_label, on_click=toggle_theme)
-        
-        # Status message container for feedback
-        status_container = st.empty()
-        
-        # Create sidebar filters
-        status_container.info("Loading filters...")
-        filters = create_sidebar_filters(RSS_FEEDS)
-        
-        # Fetch and process articles
-        with st.spinner('Loading articles...'):
-            # Only fetch from selected sources or all if none selected
-            selected_feeds = [(url, name) for url, name in RSS_FEEDS 
-                            if name in filters['selected_sources'] or not filters['selected_sources']]
-            
-            # Update status with number of feeds being fetched
-            status_container.info(f"Fetching articles from {len(selected_feeds)} sources...")
-            
-            # Get cached article data
-            all_articles = get_article_data(selected_feeds, filters)
-            
-            # Store articles in session state for reports
-            st.session_state.all_articles = all_articles
-            
-            # Set initialization as complete
-            st.session_state.initialization_complete = True
-            
-            # Clear status message once loaded
-            status_container.empty()
-            
-            # Display a message if no articles were found
-            if not all_articles:
-                st.warning("No articles match your current filter criteria. Try adjusting your filters.")
-                # Add a button to reset filters
-                if st.button("Reset Filters"):
-                    # Reset session state for filters
-                    if 'selected_sources' in st.session_state:
-                        st.session_state.selected_sources = []
-                    # Force page refresh
-                    st.experimental_rerun()
-                st.stop()
-
-            # Sort articles
-            if filters['sort_by'] == "Date":
-                all_articles.sort(key=lambda x: x['date'], reverse=True)
-            elif filters['sort_by'] == "Importance":
-                all_articles.sort(key=lambda x: x['importance'], reverse=True)
-            elif filters['sort_by'] == "Relevance":
-                # Sort by number of category hits if a topic filter is applied
-                if filters['selected_topic'] != 'All':
-                    all_articles.sort(key=lambda x: x['categories'].get(filters['selected_topic'], 0), reverse=True)
-                else:
-                    all_articles.sort(key=lambda x: len(x['categories']), reverse=True)
-        
-        # Choose which view to display
-        if st.session_state.current_view == 'reports':
-            # Show the reports view
-            render_reports_view(all_articles)
-        else:
-            # Original dashboard view - display metrics
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                st.metric("Total Articles", len(all_articles))
-            with col2:
-                avg_importance = round(sum(a['importance'] for a in all_articles) / max(len(all_articles), 1), 1)
-                st.metric("Average Importance", f"{avg_importance}/5")
-            with col3:
-                topic_counts = {}
-                for article in all_articles:
-                    for category in article['categories']:
-                        topic_counts[category] = topic_counts.get(category, 0) + 1
-                top_topic = max(topic_counts.items(), key=lambda x: x[1])[0] if topic_counts else "None"
-                st.metric("Top Topic", top_topic)
-            with col4:
-                recent_date = max([a['date'] for a in all_articles], default=datetime.datetime.now())
-                st.metric("Most Recent", recent_date.strftime("%Y-%m-%d %H:%M"))
-            
-            # Set up pagination
-            articles_per_page = 5  # Limiting cards per page
-            
-            # Initialize page number if not already set
-            if 'page_number' not in st.session_state:
-                st.session_state.page_number = 0
-            
-            # Calculate total number of pages
-            total_pages = (len(all_articles) - 1) // articles_per_page + 1
-            
-            # Page navigation
-            st.markdown("### Articles")
-            
-            # Navigation buttons
-            col1, col2, col3 = st.columns([1, 2, 1])
-            with col1:
-                if st.button("← Previous Page", disabled=st.session_state.page_number <= 0):
-                    st.session_state.page_number -= 1
-                    st.experimental_rerun()
-            
-            with col2:
-                # Page indicator
-                st.markdown(f"<div style='text-align: center'>Page {st.session_state.page_number + 1} of {total_pages}</div>", unsafe_allow_html=True)
-            
-            with col3:
-                if st.button("Next Page →", disabled=st.session_state.page_number >= total_pages - 1):
-                    st.session_state.page_number += 1
-                    st.experimental_rerun()
-            
-            # Calculate slice for current page
-            start_idx = st.session_state.page_number * articles_per_page
-            end_idx = min(start_idx + articles_per_page, len(all_articles))
-            
-            # Display current page of articles
-            for i, article in enumerate(all_articles[start_idx:end_idx]):
-                try:
-                    display_article(article, get_image(article['image_url'] or FILLER_IMAGE_PATH))
-                except Exception as e:
-                    logger.error(f"Error displaying article: {str(e)}")
-                    continue
-            
-            # Bottom navigation buttons
-            st.markdown("---")
-            
-            col1, col2, col3 = st.columns([1, 2, 1])
-            with col1:
-                if st.button("← Previous Page", key="prev_bottom", disabled=st.session_state.page_number <= 0):
-                    st.session_state.page_number -= 1
-                    st.experimental_rerun()
-            
-            with col2:
-                # Page indicator
-                st.markdown(f"<div style='text-align: center'>Page {st.session_state.page_number + 1} of {total_pages}</div>", unsafe_allow_html=True)
-            
-            with col3:
-                if st.button("Next Page →", key="next_bottom", disabled=st.session_state.page_number >= total_pages - 1):
-                    st.session_state.page_number += 1
-                    st.experimental_rerun()
-            
-            # Footer
-            st.markdown("---")
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                st.markdown("Dashboard created with Streamlit - Data sourced from various RSS feeds")
-            with col2:
-                st.markdown(f"Last updated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-                
-            # Debug mode toggle
-            with st.expander("Advanced Options"):
-                debug_mode = st.checkbox("Debug Mode", value=st.session_state.get('debug_mode', False))
-                st.session_state.debug_mode = debug_mode
-                
-                if debug_mode:
-                    # Display logs
-                    display_logs()
-                    
-                    st.write("Feed Sources:")
-                    for url, name in RSS_FEEDS:
-                        st.write(f"- {name}: {url}")
-                    
-                    if st.button("Reset All Settings"):
-                        for key in list(st.session_state.keys()):
-                            del st.session_state[key]
-                        st.experimental_rerun()
-
-# Use this pattern to suppress Streamlit's default exception handling
-try:
-    if __name__ == "__main__":
-        main()
-except Exception as e:
-    logger.error(f"Unhandled exception in main app: {str(e)}")
-    with open(os.path.join(log_dir, "error.txt"), "w") as f:
-        f.write(f"App crashed at {datetime.datetime.now()}: {str(e)}")
-    st.error("An error occurred. Please check the logs for details.")
