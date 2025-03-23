@@ -1,6 +1,6 @@
 # indo_pacific_dashboard.py
 """
-Improved Indo-Pacific Dashboard with better UI and UX
+Improved Indo-Pacific Dashboard
 """
 
 # Third-party imports
@@ -14,6 +14,7 @@ import time
 import logging
 import datetime
 import hashlib
+from streamlit.source_util import get_pages
 
 # Ensure the necessary directories exist
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -43,19 +44,76 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Add CSS to ensure hamburger menu always shows and is properly styled
+# Function to hide specific pages in the sidebar
+def hide_report_pages():
+    # Get the streamlit pages dictionary
+    pages = get_pages("")
+    
+    # Identify report generator pages to remove
+    pages_to_remove = []
+    for page, config in pages.items():
+        if "report" in page.lower() or "Report" in page:
+            pages_to_remove.append(page)
+    
+    # Remove the identified pages
+    for page in pages_to_remove:
+        try:
+            del pages[page]
+        except KeyError:
+            pass
+
+# Call this function immediately
+hide_report_pages()
+
+# Add CSS to ensure hamburger menu shows properly as 3 lines
 st.markdown("""
 <style>
-/* Always show hamburger menu with proper styling */
+/* Create the hamburger menu icon with 3 lines */
 [data-testid="collapsedControl"] {
     display: block !important;
     visibility: visible !important;
+    position: relative;
+    width: 28px;
+    height: 24px;
 }
 
-/* Hamburger menu style - 3 lines instead of arrow */
-[data-testid="collapsedControl"] {
-    border: none !important;
-    background-color: transparent !important;
+/* Add three bars to create hamburger icon */
+[data-testid="collapsedControl"]::before,
+[data-testid="collapsedControl"]::after,
+[data-testid="collapsedControl"] span {
+    content: '';
+    display: block;
+    position: absolute;
+    height: 3px;
+    width: 100%;
+    background-color: currentColor;
+    border-radius: 3px;
+    left: 0;
+}
+
+[data-testid="collapsedControl"]::before {
+    top: 5px;
+}
+
+[data-testid="collapsedControl"] span {
+    top: 14px;
+}
+
+[data-testid="collapsedControl"]::after {
+    bottom: 5px;
+}
+
+/* Hide the default arrow */
+[data-testid="collapsedControl"] svg {
+    display: none !important;
+}
+
+/* Ensure the menu items for report generator are hidden */
+span a[href="./Report_Generator"],
+span a[href="./report_generator"],
+span a[href="./02_Report_Generator"],
+span a[href*="report"] {
+    display: none !important;
 }
 
 /* Dark mode improvements */
@@ -273,11 +331,6 @@ try:
             "Neutral sentiment"
         ]
         
-        # Add dynamically generated country filters based on the most common entities
-        # in the sentiment analysis of recent articles
-        common_sentiment_entities = ["Regional", "Overall"]  # Default entities
-        
-        # This will be expanded dynamically as articles are processed
         sentiment_filter = st.sidebar.selectbox(
             "Sentiment Analysis",
             sentiment_options
@@ -471,8 +524,7 @@ def get_category_analysis(content):
 @st.cache_data(ttl=7200)  # Cache for 2 hours
 def get_article_data(selected_feeds, filters):
     """
-    Cached function to fetch and process articles.
-    This separates data fetching from UI rendering for better performance.
+    Cached function to fetch and process articles with improved performance.
     """
     all_articles = []
     
@@ -482,279 +534,132 @@ def get_article_data(selected_feeds, filters):
             # Add a more detailed progress bar
             progress_bar = st.progress(0)
             
-            # Fetch the data
-            feeds_data = cached_fetch_rss_feeds(selected_feeds)
-            progress_bar.progress(50)
+            # Set a smaller batch size for feeds to process at once
+            # This prevents timeout issues with many feeds
+            BATCH_SIZE = 5
             
-            # Process each entry
-            for source_idx, (source_name, feed) in enumerate(feeds_data.items()):
+            # Process feeds in smaller batches
+            for i in range(0, len(selected_feeds), BATCH_SIZE):
+                batch = selected_feeds[i:i+BATCH_SIZE]
+                
                 # Update progress
-                progress_percentage = 50 + int((source_idx / len(feeds_data)) * 50)
+                progress_percentage = int((i / len(selected_feeds)) * 50)
                 progress_bar.progress(progress_percentage)
                 
-                if not feed or 'entries' not in feed:
-                    logger.warning(f"No entries found for {source_name}")
-                    continue
+                # Fetch this batch of feeds
+                batch_feeds_data = cached_fetch_rss_feeds(batch)
+                
+                # Process each entry
+                for source_idx, (source_name, feed) in enumerate(batch_feeds_data.items()):
+                    # Update progress within batch
+                    batch_progress = int((source_idx / len(batch_feeds_data)) * (50/len(selected_feeds)*BATCH_SIZE))
+                    progress_bar.progress(progress_percentage + batch_progress)
                     
-                for entry in feed['entries']:
-                    try:
-                        # Skip entries that indicate feed failures
-                        title = entry.get('title', '')
-                        if 'Unable to fetch content' in title:
-                            continue
-                        
-                        # Process the entry
-                        content = entry.get('summary', '')
-                        
-                        # Check country relevance
-                        if filters['selected_country'] != 'All':
-                            if filters['selected_country'].lower() not in content.lower():
-                                continue
-                        
-                        # Check topic relevance if selected
-                        if filters['selected_topic'] != 'All':
-                            # Get categories for this article
-                            categories = get_category_analysis(content)
-                            if filters['selected_topic'] not in categories:
-                                continue
-                        else:
-                            # Generate categories only if needed
-                            categories = get_category_analysis(content)
-                        
-                        # Generate article metadata
-                        tags = generate_tags(content)
-                        summary = generate_summary(content)
-                        importance = rate_importance(content, tags)
-                        sentiment = analyze_sentiment(content)
-                        
-                        # Add an 'Overall' sentiment if not present
-                        if sentiment and 'Overall' not in sentiment:
-                            sentiment_values = list(sentiment.values())
-                            if sentiment_values:
-                                sentiment['Overall'] = round(sum(sentiment_values) / len(sentiment_values), 2)
-                        
-                        # Apply importance filter
-                        if importance < filters['min_importance']:
-                            continue
-                        
-                        # Apply sentiment filter
-                        if filters['sentiment_filter'] != 'All':
-                            if filters['sentiment_filter'] == 'Positive sentiment' and not any(v > 0.1 for v in sentiment.values()):
-                                continue
-                            if filters['sentiment_filter'] == 'Negative sentiment' and not any(v < -0.1 for v in sentiment.values()):
-                                continue
-                            if filters['sentiment_filter'] == 'Neutral sentiment' and not any(-0.1 <= v <= 0.1 for v in sentiment.values()):
-                                continue
-                        
-                        # Apply keyword search
-                        if filters['search_term'] and filters['search_term'].lower() not in str(content).lower():
-                            continue
-                            
-                        # Convert time tuple to datetime safely
-                        try:
-                            pub_date = datetime.datetime(*entry['published_parsed'][:6]) if entry.get('published_parsed') else datetime.datetime.now()
-                        except (TypeError, ValueError):
-                            pub_date = datetime.datetime.now()
-                        
-                        # Apply time filter
-                        if filters['time_filter'] != 'All Time':
-                            now = datetime.datetime.now()
-                            if filters['time_filter'] == 'Today' and (now - pub_date).days > 1:
-                                continue
-                            elif filters['time_filter'] == 'Past Week' and (now - pub_date).days > 7:
-                                continue
-                            elif filters['time_filter'] == 'Past Month' and (now - pub_date).days > 30:
-                                continue
-                            elif filters['time_filter'] == 'Past 3 Months' and (now - pub_date).days > 90:
-                                continue
-                        
-                        article = {
-                            'title': title,
-                            'link': entry.get('link', ''),
-                            'date': pub_date,
-                            'summary': summary,
-                            'tags': tags,
-                            'importance': importance,
-                            'sentiment': sentiment,
-                            'source': source_name,
-                            'image_url': entry['media_content'][0]['url'] if entry.get('media_content') and entry['media_content'] else None,
-                            'categories': categories
-                        }
-                        all_articles.append(article)
-                    except Exception as e:
-                        logger.warning(f"Error processing article from {source_name}: {str(e)}")
+                    if not feed or 'entries' not in feed:
+                        logger.warning(f"No entries found for {source_name}")
                         continue
+                        
+                    # Limit to the most recent entries per source to avoid overwhelming the system
+                    recent_entries = feed['entries'][:10]  # Only process 10 most recent entries per source
+                    
+                    for entry in recent_entries:
+                        try:
+                            # Skip entries that indicate feed failures
+                            title = entry.get('title', '')
+                            if 'Unable to fetch content' in title:
+                                continue
+                            
+                            # Process the entry
+                            content = entry.get('summary', '')
+                            
+                            # Apply filters
+                            # Country filter
+                            if filters['selected_country'] != 'All':
+                                if filters['selected_country'].lower() not in content.lower():
+                                    continue
+                            
+                            # Generate article metadata - do this in a specific order
+                            # to minimize processing for articles that will be filtered out
+                            
+                            # 1. First check categories to filter by topic
+                            categories = get_category_analysis(content)
+                            if filters['selected_topic'] != 'All' and filters['selected_topic'] not in categories:
+                                continue
+                            
+                            # 2. Check importance
+                            tags = generate_tags(content)
+                            importance = rate_importance(content, tags)
+                            if importance < filters['min_importance']:
+                                continue
+                            
+                            # 3. Apply keyword search filter
+                            if filters['search_term'] and filters['search_term'].lower() not in str(content).lower():
+                                continue
+                            
+                            # 4. Generate summary only for articles that pass other filters
+                            summary = generate_summary(content)
+                            
+                            # 5. Do sentiment analysis last as it's computationally expensive
+                            sentiment = analyze_sentiment(content)
+                            
+                            # Add an 'Overall' sentiment if not present
+                            if sentiment and 'Overall' not in sentiment:
+                                sentiment_values = list(sentiment.values())
+                                if sentiment_values:
+                                    sentiment['Overall'] = round(sum(sentiment_values) / len(sentiment_values), 2)
+                            
+                            # Apply sentiment filter
+                            if filters['sentiment_filter'] != 'All':
+                                if filters['sentiment_filter'] == 'Positive sentiment' and not any(v > 0.1 for v in sentiment.values()):
+                                    continue
+                                if filters['sentiment_filter'] == 'Negative sentiment' and not any(v < -0.1 for v in sentiment.values()):
+                                    continue
+                                if filters['sentiment_filter'] == 'Neutral sentiment' and not any(-0.1 <= v <= 0.1 for v in sentiment.values()):
+                                    continue
+                            
+                            # Convert time tuple to datetime safely
+                            try:
+                                pub_date = datetime.datetime(*entry['published_parsed'][:6]) if entry.get('published_parsed') else datetime.datetime.now()
+                            except (TypeError, ValueError):
+                                pub_date = datetime.datetime.now()
+                            
+                            # Apply time filter
+                            if filters['time_filter'] != 'All Time':
+                                now = datetime.datetime.now()
+                                if filters['time_filter'] == 'Today' and (now - pub_date).days > 1:
+                                    continue
+                                elif filters['time_filter'] == 'Past Week' and (now - pub_date).days > 7:
+                                    continue
+                                elif filters['time_filter'] == 'Past Month' and (now - pub_date).days > 30:
+                                    continue
+                                elif filters['time_filter'] == 'Past 3 Months' and (now - pub_date).days > 90:
+                                    continue
+                            
+                            article = {
+                                'title': title,
+                                'link': entry.get('link', ''),
+                                'date': pub_date,
+                                'summary': summary,
+                                'tags': tags,
+                                'importance': importance,
+                                'sentiment': sentiment,
+                                'source': source_name,
+                                'image_url': entry['media_content'][0]['url'] if entry.get('media_content') and entry['media_content'] else None,
+                                'categories': categories
+                            }
+                            all_articles.append(article)
+                        except Exception as e:
+                            logger.warning(f"Error processing article from {source_name}: {str(e)}")
+                            continue
             
             # Clear progress bar when done
             progress_bar.empty()
     except Exception as e:
         logger.error(f"Error fetching feeds: {str(e)}")
     
+    # Cap the number of articles to prevent UI slowdowns
+    if len(all_articles) > 50:
+        st.warning(f"Limited to 50 most relevant articles out of {len(all_articles)} total matches")
+        all_articles = all_articles[:50]
+    
     return all_articles
-
-# Improved article display function to show sentiment and tags inline (not hidden)
-def display_article_improved(article, image):
-    """
-    Display a single article in a card format with improved sentiment display.
-    
-    Parameters:
-    -----------
-    article : dict
-        Article data dictionary containing title, date, summary, etc.
-    image : PIL.Image
-        Image to display with the article
-    """
-    # Create a card with a border
-    with st.container():
-        st.markdown("---")
-        
-        # Two-column layout
-        col1, col2 = st.columns([1, 3])
-        
-        with col1:
-            # Display the image
-            st.image(image, use_column_width=True)
-            
-            # Display importance rating with stars
-            importance_stars = "⭐" * article['importance']
-            st.markdown(f"**Importance:** {importance_stars}")
-            
-            # Display source and date
-            st.markdown(f"**Source:** {article['source']}")
-            st.markdown(f"**Date:** {article['date'].strftime('%Y-%m-%d %H:%M')}")
-            
-            # Display categories
-            if article.get('categories'):
-                st.markdown("**Categories:**")
-                for category, count in article['categories'].items():
-                    st.markdown(f"- {category}: {count} mentions")
-        
-        with col2:
-            # Article title as link
-            st.markdown(f"## [{article['title']}]({article['link']})")
-            
-            # Summary
-            st.markdown(f"{article['summary']}")
-            
-            # Always display tags directly (not in expander)
-            if article.get('tags'):
-                st.markdown("**Tags:** " + ", ".join(article['tags']))
-            
-            # Always display sentiment analysis directly (not in expander)
-            if article.get('sentiment'):
-                st.markdown("**Sentiment Analysis:**")
-                
-                # Create a horizontal bar chart for sentiment
-                for entity, score in article['sentiment'].items():
-                    # Determine color based on sentiment
-                    color = "green" if score > 0 else "red" if score < 0 else "gray"
-                    
-                    # Calculate width percentage (convert -1 to 1 scale to 0-100%)
-                    width = abs(score) * 50  # 50% is neutral
-                    
-                    # Display horizontal bar
-                    st.markdown(
-                        f"""
-                        <div style="display: flex; align-items: center; margin-bottom: 5px;">
-                            <div style="width: 80px;">{entity}:</div>
-                            <div style="background-color: {color}; width: {width}%; 
-                                        height: 15px; border-radius: 3px;"></div>
-                            <div style="margin-left: 10px;">{score:.2f}</div>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-            
-            # Call to action buttons
-            col_a, col_b, col_c = st.columns(3)
-            
-            # Create a unique key for each button based on multiple properties
-            unique_key = hashlib.md5(
-                f"{article['title']}{article['link']}{str(article['date'])}{article['source']}".encode()
-            ).hexdigest()[:12]
-            
-            with col_a:
-                st.button("Read Full Article", 
-                          key=f"read_{unique_key}", 
-                          help=f"Open {article['link']}")
-            with col_b:
-                st.button("Save for Later", 
-                          key=f"save_{unique_key}", 
-                          help="Save this article to your reading list")
-            with col_c:
-                st.button("Share", 
-                          key=f"share_{unique_key}", 
-                          help="Share this article")
-
-# Function to display logs in debug mode
-def display_logs():
-    """Display recent logs in the debug section"""
-    with st.expander("View Error Logs"):
-        if os.path.exists(log_file):
-            with open(log_file, 'r') as f:
-                log_content = f.readlines()
-                
-            # Filter to show only warnings and errors
-            error_logs = [line for line in log_content if 'ERROR' in line or 'WARNING' in line]
-            
-            # Show the most recent logs (limited to 50 for performance)
-            recent_logs = error_logs[-50:] if len(error_logs) > 50 else error_logs
-            
-            # Display error logs with formatting
-            st.text_area("Recent Errors and Warnings", value="".join(recent_logs), height=300)
-            
-            # Add log management options
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("Clear Logs"):
-                    try:
-                        # Backup the log file before clearing
-                        backup_file = os.path.join(
-                            log_dir, 
-                            f"dashboard_{datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')}_backup.log"
-                        )
-                        with open(log_file, 'r') as src, open(backup_file, 'w') as dst:
-                            dst.write(src.read())
-                        
-                        # Clear the log file
-                        with open(log_file, 'w') as f:
-                            f.write(f"Log cleared at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                        
-                        st.success("Logs cleared successfully")
-                        st.experimental_rerun()
-                    except Exception as e:
-                        st.error(f"Error clearing logs: {str(e)}")
-            
-            with col2:
-                if st.button("Download Logs"):
-                    try:
-                        with open(log_file, 'r') as f:
-                            log_content = f.read()
-                        
-                        st.download_button(
-                            label="Download Log File",
-                            data=log_content,
-                            file_name=f"dashboard_logs_{datetime.datetime.now().strftime('%Y-%m-%d')}.log",
-                            mime="text/plain"
-                        )
-                    except Exception as e:
-                        st.error(f"Error preparing logs for download: {str(e)}")
-        else:
-            st.info("No log file found for today.")
-
-# Function to render the reports view
-def render_reports_view(all_articles):
-    """
-    Render the reports page with report generation functionality
-    
-    Parameters:
-    -----------
-    all_articles : list
-        List of processed article dictionaries
-    """
-    st.title("Indo-Pacific Analysis Reports")
-    
-    st.markdown("""
-    Generate comprehensive analytical reports based on the aggregated news data.
-    These reports include sentiment analysis, key developments, and regional trends.
-    """)
