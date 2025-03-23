@@ -1,6 +1,6 @@
-# sentiment.py
+# utils/sentiment.py
 """
-Improved sentiment analysis utilities for the Indo-Pacific Dashboard.
+Enhanced sentiment analysis utilities for the Indo-Pacific Dashboard.
 """
 
 import nltk
@@ -30,7 +30,7 @@ def analyze_sentiment(text):
     if not text:
         return {}
     
-    # Key entities to track sentiment for - we'll use a comprehensive list
+    # Key entities to track sentiment for - comprehensive list
     # of countries and regional actors in the Indo-Pacific
     key_entities = {
         'US': ['US', 'United States', 'America', 'Washington', 'Biden', 'Americans'],
