@@ -146,6 +146,24 @@ try:
     from utils.theme import apply_theme, toggle_theme
     from components.article_card import display_article
     from components.filters import create_sidebar_filters
+    
+    # Try to import the simplified NER instead of the advanced one
+    try:
+        # First try the simplified NER
+        from utils.simplified_ner import analyze_article_content
+        logger.info("Using simplified NER implementation")
+    except ImportError:
+        # If that fails, try to fallback to a very basic implementation
+        logger.warning("Simplified NER not available, using basic placeholder")
+        
+        # Define a basic placeholder function
+        def analyze_article_content(text):
+            return {
+                "entities": {},
+                "relationships": [],
+                "importance": {}
+            }
+    
     # Import report generator (optional)
     try:
         from components.report_generator import ReportGenerator
