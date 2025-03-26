@@ -450,7 +450,7 @@ def settings_view():
         if (new_theme == "Light" and current_theme != 'light') or (new_theme == "Dark" and current_theme != 'dark'):
             st.session_state.theme = new_theme.lower()
             st.success(f"Theme changed to {new_theme}. Refresh to see changes.")
-            st.button("Apply Theme", on_click=lambda: st.experimental_rerun())
+            st.button("Apply Theme", on_click=lambda: st.rerun())
     
     with col2:
         # Default view
@@ -562,7 +562,7 @@ def main():
     
     if st.sidebar.button(theme_label, key="theme_toggle"):
         st.session_state.theme = 'dark' if current_theme == 'light' else 'light'
-        st.experimental_rerun()
+        st.rerun()
     
     # Add footer to sidebar
     st.sidebar.markdown("---")
@@ -937,7 +937,7 @@ def dashboard_view():
             if cols[i].button(source):
                 if source not in st.session_state.selected_sources:
                     st.session_state.selected_sources.append(source)
-                st.experimental_rerun()
+                st.rerun()
         return
     
     # Fetch and process articles
@@ -1066,4 +1066,4 @@ def dashboard_view():
     # Add refresh button
     if st.button("Refresh Data"):
         st.cache_data.clear()
-        st.experimental_rerun()
+        st.rerun()
