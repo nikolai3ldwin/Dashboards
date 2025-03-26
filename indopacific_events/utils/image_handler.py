@@ -1,14 +1,17 @@
-# image_handler.py
+# utils/image_handler.py
 """
-Enhanced utilities for handling and processing images in the Indo-Pacific Dashboard.
+Fixed utilities for handling and processing images in the Indo-Pacific Dashboard.
 """
 
-import streamlit as st  # Import streamlit at the top
 import os
 import requests
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
-import random
+import streamlit as st
+import logging
+
+# Get logger
+logger = logging.getLogger("indo_pacific_dashboard")
 
 # Cache images to avoid reloading
 @st.cache_data(ttl=3600)  # Cache for 1 hour
@@ -41,7 +44,7 @@ def get_image(image_path_or_url, default_size=(300, 200)):
                 img = Image.open(BytesIO(response.content))
             except Exception as e:
                 # If URL fetch fails, create a placeholder
-                print(f"Error loading image from URL {image_path_or_url}: {str(e)}")
+                logger.warning(f"Error loading image from URL {image_path_or_url}: {str(e)}")
                 return create_placeholder_image(default_size)
         else:
             # It's a local path
@@ -49,7 +52,7 @@ def get_image(image_path_or_url, default_size=(300, 200)):
                 img = Image.open(image_path_or_url)
             else:
                 # If file doesn't exist, create a placeholder
-                print(f"Local image not found: {image_path_or_url}")
+                logger.warning(f"Local image not found: {image_path_or_url}")
                 return create_placeholder_image(default_size)
         
         # Convert to RGB if image is in RGBA mode
@@ -64,7 +67,7 @@ def get_image(image_path_or_url, default_size=(300, 200)):
     
     except Exception as e:
         # If anything fails, return a placeholder image
-        print(f"Error loading image {image_path_or_url}: {str(e)}")
+        logger.warning(f"Error loading image {image_path_or_url}: {str(e)}")
         return create_placeholder_image(default_size)
 
 def create_placeholder_image(size=(300, 200)):
@@ -81,61 +84,36 @@ def create_placeholder_image(size=(300, 200)):
     PIL.Image
         Placeholder image
     """
-    # Create a gradient background for the placeholder
-    colors = [
-        # Blue ocean-themed gradients
-        ((70, 130, 180), (100, 149, 237)),  # Steel Blue to Cornflower Blue
-        ((0, 119, 182), (0, 180, 216)),     # Blue to Light Blue
-        ((25, 25, 112), (65, 105, 225)),    # Midnight Blue to Royal Blue
-        ((30, 144, 255), (135, 206, 250)),  # Dodger Blue to Light Sky Blue
-        
-        # Asia Pacific inspired colors
-        ((255, 105, 97), (249, 131, 166)),  # Coral to Pink
-        ((34, 139, 34), (124, 252, 0)),     # Forest Green to Lawn Green
-        ((255, 165, 0), (255, 215, 0)),     # Orange to Gold
-        ((139, 69, 19), (210, 105, 30))     # Saddle Brown to Chocolate
-    ]
-    
-    # Select a random color pair
-    color1, color2 = random.choice(colors)
-    
-    # Create a gradient image
-    img = Image.new('RGB', size, color=color1)
-    draw = ImageDraw.Draw(img)
-    
-    # Draw a simple gradient by using polygons
-    width, height = size
-    for i in range(height):
-        # Calculate color for this line
-        ratio = i / height
-        r = int(color1[0] * (1 - ratio) + color2[0] * ratio)
-        g = int(color1[1] * (1 - ratio) + color2[1] * ratio)
-        b = int(color1[2] * (1 - ratio) + color2[2] * ratio)
-        
-        # Draw a line with this color
-        draw.line([(0, i), (width, i)], fill=(r, g, b))
-    
-    # Add text to the image
+    # Create a blue gradient background for the placeholder
     try:
-        # Try to load a font, fall back to default
+        # Create a simple blue image
+        img = Image.new('RGB', size, color=(70, 130, 180))
+        draw = ImageDraw.Draw(img)
+        
+        # Try to add text
         try:
-            font = ImageFont.truetype("arial.ttf", 20)
-        except:
+            # Try to load a font, fall back to default
             font = ImageFont.load_default()
+            
+            # Draw text
+            text = "Indo-Pacific"
+            # Estimate text size based on font properties
+            text_width = len(text) * 7  # Rough estimate
+            text_height = 12  # Rough estimate
+            position = ((size[0] - text_width) // 2, (size[1] - text_height) // 2)
+            
+            # Draw text with shadow for better visibility
+            draw.text((position[0]+2, position[1]+2), text, font=font, fill=(0, 0, 0))
+            draw.text(position, text, font=font, fill=(255, 255, 255))
+        except Exception as e:
+            # If text rendering fails, just return the gradient
+            logger.warning(f"Error adding text to placeholder: {str(e)}")
         
-        # Draw text
-        text = "Indo-Pacific"
-        text_width, text_height = draw.textsize(text, font=font) if hasattr(draw, 'textsize') else (100, 20)
-        position = ((width - text_width) // 2, (height - text_height) // 2)
-        
-        # Draw text with shadow for better visibility
-        draw.text((position[0]+2, position[1]+2), text, font=font, fill=(0, 0, 0, 128))
-        draw.text(position, text, font=font, fill=(255, 255, 255))
+        return img
     except Exception as e:
-        # If text rendering fails, just return the gradient
-        print(f"Error adding text to placeholder: {str(e)}")
-    
-    return img
+        logger.error(f"Error creating placeholder image: {str(e)}")
+        # Last resort - create a very basic image
+        return Image.new('RGB', size, color=(70, 130, 180))
 
 def resize_image(img, max_width=800, max_height=600):
     """
@@ -158,53 +136,22 @@ def resize_image(img, max_width=800, max_height=600):
     if not img:
         return create_placeholder_image((max_width, max_height))
     
-    # Calculate the aspect ratio
-    width, height = img.size
-    aspect_ratio = width / height
-    
-    # Determine new dimensions
-    if width > max_width:
-        width = max_width
-        height = int(width / aspect_ratio)
-    
-    if height > max_height:
-        height = max_height
-        width = int(height * aspect_ratio)
-    
-    # Resize the image
-    return img.resize((width, height), Image.LANCZOS)
-
-def apply_image_effects(img, effect='none'):
-    """
-    Apply visual effects to an image.
-    
-    Parameters:
-    -----------
-    img : PIL.Image
-        Image to process
-    effect : str
-        Effect to apply ('none', 'grayscale', 'sepia', etc.)
-    
-    Returns:
-    --------
-    PIL.Image
-        Processed image
-    """
-    if not img:
-        return create_placeholder_image()
-    
-    # Apply selected effect
-    if effect == 'grayscale':
-        return img.convert('L').convert('RGB')
-    elif effect == 'sepia':
-        # Simple sepia effect
-        grayscale = img.convert('L')
-        sepia = Image.merge('RGB', [
-            grayscale,
-            grayscale.point(lambda x: min(255, int(x * 0.95))),
-            grayscale.point(lambda x: min(255, int(x * 0.7)))
-        ])
-        return sepia
-    else:
-        # No effect or unknown effect
-        return img
+    try:
+        # Calculate the aspect ratio
+        width, height = img.size
+        aspect_ratio = width / height
+        
+        # Determine new dimensions
+        if width > max_width:
+            width = max_width
+            height = int(width / aspect_ratio)
+        
+        if height > max_height:
+            height = max_height
+            width = int(height * aspect_ratio)
+        
+        # Resize the image
+        return img.resize((width, height), Image.LANCZOS)
+    except Exception as e:
+        logger.error(f"Error resizing image: {str(e)}")
+        return create_placeholder_image((max_width, max_height))
