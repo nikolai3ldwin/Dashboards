@@ -43,5 +43,6 @@ packaging>=20.0  # Required by various packages
 
 # Named Entity Recognition (NER)
 # Relationship Network Visualization
-spacy==3.6.1
+spacy==3.5.0  # Instead of latest version
+thinc==8.1.7  # Compatible with the above spaCy version
 networkx==3.1
