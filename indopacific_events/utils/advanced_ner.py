@@ -1,3 +1,8 @@
+# REPLACED WITH A SIMPLIFIED VERSION
+# TEMPORARY
+# WORKING TO FIX COMPILATION ERROR WITH SPACY LIBRARY
+
+'''
 # utils/advanced_ner.py
 """
 Advanced Named Entity Recognition and Relationship Extraction 
@@ -218,3 +223,4 @@ def analyze_article_content(text):
     except Exception as e:
         logger.error(f"Error in advanced NER analysis: {str(e)}")
         return {"entities": {}, "relationships": [], "importance": {}}
+'''
