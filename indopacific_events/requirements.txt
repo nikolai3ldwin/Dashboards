@@ -41,8 +41,10 @@ importlib-metadata>=4.4.0  # Required by various packages
 typing-extensions>=4.0.0  # Required by various packages
 packaging>=20.0  # Required by various packages
 
+# TEMPORARY
+# Remove spaCy and Advanced NER due to C++ / Python Compilation errors
 # Named Entity Recognition (NER)
 # Relationship Network Visualization
-spacy==3.6.1 # to address a C++ Python compilation error
-thinc==8.2.1 # to address a C++ Python compilation error
-networkx==3.1
+# spacy==3.6.1 # to address a C++ Python compilation error
+# thinc==8.2.1 # to address a C++ Python compilation error
+# networkx==3.1
