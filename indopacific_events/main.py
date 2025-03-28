@@ -337,20 +337,20 @@ def dashboard_view():
         st.write(f"**Topic:** {filters['selected_topic']}")
     with col3:
         st.write(f"**Country:** {filters['selected_country']}")
-        
-    # Show loading message if no sources selected
+    
+    # If no sources selected, use default sources
     if not filters['selected_sources']:
-        st.warning("Please select at least one news source in the sidebar to view articles.")
-        # Show sample sources with direct selection buttons
-        st.markdown("### Quick Source Selection")
-        sample_sources = [source for _, source in RSS_FEEDS[:5]]
-        cols = st.columns(len(sample_sources))
-        for i, source in enumerate(sample_sources):
-            if cols[i].button(source):
-                if source not in st.session_state.selected_sources:
-                    st.session_state.selected_sources.append(source)
-                st.rerun()
-        return
+        # Get first three sources as default
+        default_sources = [source for _, source in RSS_FEEDS[:3]]
+        
+        # Update session state and filters
+        st.session_state.selected_sources = default_sources
+        filters['selected_sources'] = default_sources
+        
+        # Update selected feeds
+        selected_feeds = [(url, source) for url, source in RSS_FEEDS if source in default_sources]
+        
+        st.info(f"Using default news sources: {', '.join(default_sources)}")
     
     # Fetch and process articles
     with st.spinner("Fetching articles..."):
@@ -362,30 +362,66 @@ def dashboard_view():
     # Display results count
     st.markdown(f"### Found {len(articles)} articles")
     
+    # No articles found
+    if not articles:
+        st.info("No articles found matching your criteria. Try adjusting your filters.")
+        return
+    
     # Toggle view mode
     view_options = ["Card View", "Compact View", "Table View"]
     view_mode = st.radio("Select View Mode:", view_options, horizontal=True)
     
+    # Pagination controls
+    articles_per_page = 10
+    total_pages = max(1, (len(articles) + articles_per_page - 1) // articles_per_page)
+    
+    # Initialize page number in session state if not present
+    if 'page_number' not in st.session_state:
+        st.session_state.page_number = 1
+    
+    # Ensure page number is valid
+    if st.session_state.page_number > total_pages:
+        st.session_state.page_number = 1
+    
+    # Page navigation
+    col1, col2, col3 = st.columns([1, 3, 1])
+    with col1:
+        if st.button("← Previous", disabled=st.session_state.page_number <= 1):
+            st.session_state.page_number -= 1
+            st.rerun()
+    
+    with col2:
+        st.write(f"Page {st.session_state.page_number} of {total_pages}")
+    
+    with col3:
+        if st.button("Next →", disabled=st.session_state.page_number >= total_pages):
+            st.session_state.page_number += 1
+            st.rerun()
+    
+    # Calculate slice indices for current page
+    start_idx = (st.session_state.page_number - 1) * articles_per_page
+    end_idx = min(start_idx + articles_per_page, len(articles))
+    
+    # Get current page articles
+    current_page_articles = articles[start_idx:end_idx]
+    
     # Display articles based on view mode
     if view_mode == "Table View":
         # Create a DataFrame for table view
-        if articles:
-            table_data = []
-            for article in articles:
-                table_data.append({
-                    "Date": article['date'].strftime("%Y-%m-%d"),
-                    "Title": article['title'],
-                    "Source": article['source'],
-                    "Importance": "⭐" * article['importance'],
-                    "Categories": ", ".join(article['categories'].keys())
-                })
-            df = pd.DataFrame(table_data)
-            st.dataframe(df, use_container_width=True)
-        else:
-            st.info("No articles found matching your criteria.")
+        table_data = []
+        for article in current_page_articles:
+            table_data.append({
+                "Date": article['date'].strftime("%Y-%m-%d"),
+                "Title": article['title'],
+                "Source": article['source'],
+                "Importance": "⭐" * article['importance'],
+                "Categories": ", ".join(article['categories'].keys())
+            })
+        df = pd.DataFrame(table_data)
+        st.dataframe(df, use_container_width=True)
     elif view_mode == "Compact View":
         # Compact view with minimal info
-        for article in articles:
+        for article in current_page_articles:
             with st.container():
                 col1, col2 = st.columns([1, 5])
                 with col1:
@@ -397,7 +433,7 @@ def dashboard_view():
                 st.markdown("---")
     else:
         # Default card view
-        for article in articles:
+        for article in current_page_articles:
             try:
                 # Determine importance class
                 importance_class = "importance-low"
@@ -474,10 +510,6 @@ def dashboard_view():
                 logger.error(f"Error displaying article {article.get('title', 'Unknown')}: {str(e)}")
                 continue
                 
-    # Show no results message
-    if not articles:
-        st.info("No articles found matching your criteria. Try adjusting your filters.")
-        
     # Add refresh button
     if st.button("Refresh Data"):
         st.cache_data.clear()
