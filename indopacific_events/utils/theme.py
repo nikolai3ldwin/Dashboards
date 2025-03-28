@@ -1,40 +1,5 @@
 # utils/theme.py
-"""
-Fixed theme manager for the Indo-Pacific Dashboard.
-Provides functionality to switch between light and dark mode with improved contrast.
-"""
-
-import streamlit as st
-import logging
-
-# Get logger
-logger = logging.getLogger("indo_pacific_dashboard")
-
-def set_theme_config():
-    """
-    Set up the theme configuration for the dashboard.
-    Should be called at the beginning of the app.
-    """
-    # Initialize theme state if not already set
-    if 'theme' not in st.session_state:
-        st.session_state.theme = 'light'
-        logger.info("Initialized theme state to 'light'")
-
-def toggle_theme():
-    """
-    Toggle between light and dark mode.
-    """
-    try:
-        if st.session_state.theme == 'light':
-            st.session_state.theme = 'dark'
-            logger.info("Theme changed to dark mode")
-        else:
-            st.session_state.theme = 'light'
-            logger.info("Theme changed to light mode")
-    except Exception as e:
-        logger.error(f"Error toggling theme: {str(e)}")
-        # Ensure theme is always set to something valid
-        st.session_state.theme = 'light'
+# Update this file with the expanded dark mode styling
 
 def apply_theme():
     """
@@ -105,108 +70,136 @@ def apply_theme():
         
         dark_theme_css = """
         <style>
+            /* Dark mode styling - EXPANDED */
             .main {
-                background-color: #1E1E1E;
-                color: #FFFFFF;  /* Improved text contrast */
+                background-color: #121212 !important;
+                color: #E0E0E0 !important;
             }
             .stApp {
-                background-color: #1E1E1E;
+                background-color: #121212 !important;
             }
             .css-1v3fvcr {
-                background-color: #1E1E1E;
+                background-color: #121212 !important;
             }
             .css-18e3th9 {
-                background-color: #1E1E1E;
+                background-color: #121212 !important;
             }
             .css-1d391kg {
-                background-color: #1E1E1E;
+                background-color: #121212 !important;
             }
+            
+            /* Text and elements */
+            p, h1, h2, h3, h4, h5, h6, span {
+                color: #E0E0E0 !important;
+            }
+            
+            /* Article cards and containers */
             .article-card {
-                background-color: #2D2D2D;
-                border: 1px solid #3D3D3D;
+                background-color: #1E1E1E !important;
+                border: 1px solid #3D3D3D !important;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.3) !important;
             }
+            
+            /* Importance indicators */
             .importance-indicator {
-                color: #FFC107;
+                color: #FFC107 !important;
             }
-            .css-hxt7ib {
-                padding-top: 1rem;
-            }
-            /* Higher contrast for links */
+            
+            /* Links with better contrast */
             .stMarkdown a {
-                color: #6BBAFF;
-                font-weight: 500;
+                color: #6BBAFF !important;
+                font-weight: 500 !important;
             }
+            
+            /* Tab styling */
             .stTabs [data-baseweb="tab-list"] {
-                background-color: #2D2D2D;
+                background-color: #2D2D2D !important;
             }
             .stTabs [data-baseweb="tab"] {
-                color: #FFFFFF;
+                color: #FFFFFF !important;
             }
             .stTabs [aria-selected="true"] {
-                background-color: #3D3D3D;
+                background-color: #3D3D3D !important;
             }
-            /* Improved button styling for dark mode with higher contrast */
+            
+            /* Form elements with better contrast */
+            .stTextInput>div>div>input, 
+            .stSelectbox>div>div>div,
+            .stNumberInput>div>div>input {
+                background-color: #2D2D2D !important;
+                color: #FFFFFF !important;
+                border: 1px solid #4D4D4D !important;
+            }
+            
+            /* Checkboxes and radio buttons */
+            .stCheckbox>div>div>div, 
+            .stRadio>div>div>div {
+                color: #FFFFFF !important;
+            }
+            
+            /* Buttons */
             button, .stButton>button {
-                background-color: #FFC107;
-                color: #000000;
-                border: none;
-                border-radius: 5px;
-                padding: 8px 16px;
-                cursor: pointer;
-                transition: background-color 0.3s;
-                font-weight: 600;
-                box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+                background-color: #FFC107 !important;
+                color: #000000 !important;
+                border: none !important;
+                border-radius: 5px !important;
+                padding: 8px 16px !important;
+                cursor: pointer !important;
+                transition: background-color 0.3s !important;
+                font-weight: 600 !important;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.3) !important;
             }
             button:hover, .stButton>button:hover {
-                background-color: #FFCA28;
+                background-color: #FFCA28 !important;
             }
-            /* Sidebar toggle indicator */
-            [data-testid="collapsedControl"] {
-                background-color: #FFC107;
-                color: #000000;
-                border-radius: 50%;
-                width: 36px;
-                height: 36px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            
+            /* Sidebar styling */
+            .sidebar .sidebar-content {
+                background-color: #1E1E1E !important;
             }
-            /* Better contrast for general text */
-            p, h1, h2, h3, h4, h5, h6, span, div {
-                color: #FFFFFF;
-            }
-            /* Improved metrics */
-            [data-testid="stMetricValue"] {
-                color: #FFFFFF;
-                font-weight: bold;
-            }
-            /* Form elements with better contrast */
-            .stTextInput>div>div>input, .stSelectbox>div>div>div {
-                background-color: #2D2D2D;
-                color: #FFFFFF;
-                border: 1px solid #4D4D4D;
-            }
-            /* Checkbox and radio buttons with better contrast */
-            .stCheckbox>div>div>div, .stRadio>div>div>div {
-                color: #FFFFFF;
-            }
-            /* Better contrast for expanders */
+            
+            /* Expanders and other containers */
             .streamlit-expanderHeader {
-                color: #FFFFFF;
-                background-color: #2D2D2D;
+                background-color: #2D2D2D !important;
+                color: #FFFFFF !important;
             }
-            /* Improved contrast for dataframes and tables */
+            
+            /* Sliders and progress bars */
+            .stSlider>div>div {
+                background-color: #3D3D3D !important;
+            }
+            
+            /* DataFrames and tables */
             .stDataFrame {
-                color: #FFFFFF;
+                color: #FFFFFF !important;
             }
             .stDataFrame [data-testid="stTable"] {
-                color: #FFFFFF;
+                color: #FFFFFF !important;
             }
-            /* Fix pagination text */
+            
+            /* Pagination controls */
             .pagination {
                 color: #FFFFFF !important;
                 font-weight: 500 !important;
+            }
+            
+            /* Metrics */
+            [data-testid="stMetricValue"] {
+                color: #FFFFFF !important;
+                font-weight: bold !important;
+            }
+            
+            /* Sidebar toggle indicator */
+            [data-testid="collapsedControl"] {
+                background-color: #FFC107 !important;
+                color: #000000 !important;
+                border-radius: 50% !important;
+                width: 36px !important;
+                height: 36px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.3) !important;
             }
         </style>
         """
@@ -227,22 +220,3 @@ def apply_theme():
         </style>
         """
         st.markdown(fallback_css, unsafe_allow_html=True)
-
-def create_theme_toggle():
-    """
-    Create a button to toggle between light and dark mode.
-    """
-    try:
-        current_theme = st.session_state.theme
-        icon = "🌙" if current_theme == 'light' else "☀️"
-        label = f"{icon} Switch to {'Dark' if current_theme == 'light' else 'Light'} Mode"
-        
-        if st.button(label, key="theme-toggle", on_click=toggle_theme):
-            st.rerun()  # Use rerun instead of experimental_rerun
-    except Exception as e:
-        logger.error(f"Error creating theme toggle: {str(e)}")
-        # Create a fallback button that hopefully works
-        if st.button("Toggle Theme", key="theme-toggle-fallback"):
-            # Simple toggle
-            st.session_state.theme = 'dark' if st.session_state.get('theme') == 'light' else 'light'
-            st.rerun()
