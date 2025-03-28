@@ -863,7 +863,7 @@ def main():
     
     # Navigation buttons
     nav_options = [
-        ("🏠 Dashboard", "dashboard"),
+        ("🏠 News", "dashboard"),
         ("📊 Analytics", "analytics"),
         ("📑 Reports", "reports"),
         ("⚙️ Settings", "settings"),
