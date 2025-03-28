@@ -144,7 +144,7 @@ try:
     from data.rss_sources import RSS_FEEDS, SOURCE_CATEGORIES
     # Import UI components
     from utils.theme import apply_theme, toggle_theme
-    from components.article_card_with_ner import display_article
+    from components.article_card_with_ner import display_article_with_ner as display_article
     from components.filters import create_sidebar_filters
     
     # Try to import the simplified NER instead of the advanced one
