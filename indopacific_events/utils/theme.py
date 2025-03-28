@@ -36,8 +36,6 @@ def toggle_theme():
         # Ensure theme is always set to something valid
         st.session_state.theme = 'light'
 
-# Updates for the theme.py file
-
 def apply_theme():
     """
     Apply the current theme using custom CSS.
@@ -116,7 +114,7 @@ def apply_theme():
                 margin-right: 5px;
                 margin-bottom: 5px;
             }
-            /* Improved button styling */
+            /* Button styling */
             button, .stButton>button {
                 background-color: #4F8BF9;
                 color: white;
@@ -130,15 +128,31 @@ def apply_theme():
             button:hover, .stButton>button:hover {
                 background-color: #2D68D8;
             }
+            
+            /* Make sidebar buttons consistent in light mode */
+            .sidebar .stButton>button {
+                background-color: #FFC107;
+                color: #000000;
+                font-weight: 600;
+            }
+
+            /* Target "Select All" and "Clear All" buttons */
+            .sidebar [data-testid="baseButton-secondary"] {
+                background-color: #FFC107;
+                color: #000000;
+                font-weight: 600;
+            }
+            
             /* Sidebar styling */
             .sidebar .sidebar-content {
                 background-color: #F5F5F5;
             }
             .sidebar-content p, .sidebar-content h1, .sidebar-content h2, 
             .sidebar-content h3, .sidebar-content h4, .sidebar-content h5, 
-            .sidebar-content h6, .sidebar-content span {
+            .sidebar-content h6, .sidebar-content span, .sidebar-content label {
                 color: #31333F !important;
             }
+            
             /* Sidebar toggle indicator */
             [data-testid="collapsedControl"] {
                 background-color: #4F8BF9;
@@ -150,6 +164,13 @@ def apply_theme():
                 align-items: center;
                 justify-content: center;
                 box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            }
+            
+            /* Fix dashboard navigation buttons specifically */
+            .sidebar [data-testid="element-container"] button {
+                background-color: #FFC107;
+                color: #000000;
+                font-weight: 600;
             }
         </style>
         """
@@ -280,13 +301,43 @@ def apply_theme():
                 background-color: #FFCA28 !important;
             }
             
+            /* Specifically target the yellow navigation buttons in sidebar */
+            .sidebar .stButton>button {
+                background-color: #FFC107 !important;
+                color: #000000 !important;
+                font-weight: 600 !important;
+                border: none !important;
+            }
+
+            /* Target "Select All" and "Clear All" buttons */
+            .sidebar [data-testid="baseButton-secondary"] {
+                background-color: #FFC107 !important;
+                color: #000000 !important;
+                font-weight: 600 !important;
+            }
+
+            /* Make sure all yellow buttons have black text */
+            .sidebar button,
+            .sidebar .stButton button,
+            [data-baseweb="button"],
+            .sidebar [data-testid="StyledFullScreenButton"] {
+                color: #000000 !important;
+            }
+
+            /* Fix dashboard navigation buttons specifically */
+            .sidebar [data-testid="element-container"] button {
+                background-color: #FFC107 !important;
+                color: #000000 !important;
+                font-weight: 600 !important;
+            }
+            
             /* Sidebar styling */
             .sidebar .sidebar-content {
                 background-color: #1E1E1E !important;
             }
             .sidebar-content p, .sidebar-content h1, .sidebar-content h2, 
             .sidebar-content h3, .sidebar-content h4, .sidebar-content h5, 
-            .sidebar-content h6, .sidebar-content span {
+            .sidebar-content h6, .sidebar-content span, .sidebar-content label {
                 color: #E0E0E0 !important;
             }
             
