@@ -29,7 +29,7 @@ def create_relationship_network(all_articles):
     relationships = []
     
     # First, process each article to get NER data if not already present
-    from utils.advanced_ner import analyze_article_content
+    from utils.simplified_ner import analyze_article_content
     
     for article in all_articles:
         # Skip if no summary is available
