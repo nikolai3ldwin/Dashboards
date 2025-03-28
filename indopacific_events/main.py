@@ -711,7 +711,7 @@ def settings_view():
         # Default view
         default_view = st.selectbox(
             "Default Dashboard View",
-            options=["Dashboard", "Reports", "Analytics", "Settings"],
+            options=["News", "Reports", "Analytics", "Settings"],
             index=0
         )
         
