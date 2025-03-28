@@ -840,7 +840,7 @@ class ReportGenerator:
         Create a Streamlit UI for the report generator.
         This should be called from within a Streamlit app.
         """
-        st.title("Indo-Pacific Report Generator")
+        #st.title("Indo-Pacific Report Generator")
         
         # Report configuration
         with st.form("report_config"):
