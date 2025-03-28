@@ -461,8 +461,8 @@ def apply_theme():
             header[data-testid="stHeader"] button,
             div[data-testid="stToolbar"] button,
             div[data-testid="stDecoration"] {
-                background-color: #FFC107 !important;
-                color: #000000 !important;
+                background-color: #4F8BF9 !important;
+                color: white !important;
             }
             
             /* Style for the header title if present */
