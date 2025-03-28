@@ -19,6 +19,15 @@ def set_theme_config():
     if 'theme' not in st.session_state:
         st.session_state.theme = 'light'
 
+st.markdown("""
+<style>
+    [data-testid="stSidebarNav"] ul li:has(div:contains("main")),
+    [data-testid="stSidebarNav"] ul li:has(div:contains("report generator")) {
+        display: none !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 def toggle_theme():
     """
     Toggle between light and dark mode.
