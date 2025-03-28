@@ -19,15 +19,6 @@ def set_theme_config():
     if 'theme' not in st.session_state:
         st.session_state.theme = 'light'
 
-st.markdown("""
-<style>
-    [data-testid="stSidebarNav"] ul li:has(div:contains("main")),
-    [data-testid="stSidebarNav"] ul li:has(div:contains("report generator")) {
-        display: none !important;
-    }
-</style>
-""", unsafe_allow_html=True)
-
 def toggle_theme():
     """
     Toggle between light and dark mode.
@@ -50,6 +41,12 @@ def apply_theme():
         # Define CSS for light and dark themes
         light_theme_css = """
         <style>
+            /* Hide specific navigation items */
+            .main:not(.block-configurator) div:has(> div > p:contains("main")),
+            .main:not(.block-configurator) div:has(> div > p:contains("report generator")) {
+                display: none !important;
+            }
+            
             .main {
                 background-color: #FFFFFF;
                 color: #31333F;
@@ -102,6 +99,12 @@ def apply_theme():
         dark_theme_css = """
         <style>
             /* Dark mode styling */
+            /* Hide specific navigation items */
+            .main:not(.block-configurator) div:has(> div > p:contains("main")),
+            .main:not(.block-configurator) div:has(> div > p:contains("report generator")) {
+                display: none !important;
+            }
+            
             .main {
                 background-color: #121212 !important;
                 color: #E0E0E0 !important;
