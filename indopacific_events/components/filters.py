@@ -1,6 +1,6 @@
 # components/filters.py
 """
-Fixed UI components for filtering content in the Indo-Pacific Dashboard
+UI components for filtering content in the Indo-Pacific Dashboard
 """
 
 import streamlit as st
@@ -44,7 +44,8 @@ def create_sidebar_filters(rss_feeds):
         
         # Initialize with empty list if state doesn't exist
         if 'selected_sources' not in st.session_state:
-            st.session_state.selected_sources = []
+            # Initialize with first three sources as default
+            st.session_state.selected_sources = all_sources[:3] if all_sources else []
         
         # Add Select All / Clear All buttons
         try:
@@ -158,14 +159,13 @@ def create_sidebar_filters(rss_feeds):
             key="importance_filter"
         )
         
-        # Sentiment filter
-        sentiment_options = [
-            "All", 
-            "Positive towards US", 
-            "Negative towards US",
-            "Positive towards China",
-            "Negative towards China"
-        ]
+        # Expanded sentiment filter for all countries
+        sentiment_options = ["All"]
+        
+        # Add specific sentiment options for countries
+        for country in ["US", "China", "Japan", "Australia", "India"]:
+            sentiment_options.append(f"Positive towards {country}")
+            sentiment_options.append(f"Negative towards {country}")
         
         sentiment_filter = st.sidebar.selectbox(
             "Sentiment Analysis",
