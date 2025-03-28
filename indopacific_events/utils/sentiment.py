@@ -1,6 +1,6 @@
-# sentiment.py
+# utils/sentiment.py
 """
-Fixed sentiment analysis utilities for the Indo-Pacific Dashboard.
+Enhanced sentiment analysis utilities for the Indo-Pacific Dashboard.
 """
 
 import nltk
@@ -31,7 +31,7 @@ except Exception as e:
 
 def analyze_sentiment(text):
     """
-    Analyze sentiment in text content with a focus on key regional actors.
+    Analyze sentiment in text content with a focus on all regional actors mentioned.
     
     Parameters:
     -----------
@@ -47,76 +47,77 @@ def analyze_sentiment(text):
         return {}
     
     try:
-        # Key entities to track sentiment for
-        key_entities = {
-            'US': ['US', 'United States', 'America', 'Washington', 'Biden', 'Americans'],
-            'China': ['China', 'Chinese', 'Beijing', 'CCP', 'Xi Jinping', 'PRC'],
-            'Australia': ['Australia', 'Australian', 'Canberra', 'Albanese'],
-            'Japan': ['Japan', 'Japanese', 'Tokyo', 'Kishida'],
-            'India': ['India', 'Indian', 'New Delhi', 'Modi'],
-            'ASEAN': ['ASEAN', 'Southeast Asia', 'Southeast Asian'],
-            'Pacific Islands': ['Pacific Islands', 'Pacific Island Countries', 'PIF', 'Forum']
+        # List of countries and entities to detect
+        countries = [
+            'United States', 'US', 'China', 'Japan', 'India', 'Australia', 
+            'South Korea', 'North Korea', 'Taiwan', 'Indonesia', 'Vietnam',
+            'Philippines', 'Malaysia', 'Singapore', 'Thailand', 'Myanmar',
+            'Cambodia', 'Laos', 'Papua New Guinea', 'Fiji', 'Solomon Islands',
+            'Vanuatu', 'New Caledonia', 'Wallis and Futuna', 'Russia'
+        ]
+        
+        # Simplified country names for results
+        country_mapping = {
+            'United States': 'US',
+            'North Korea': 'N. Korea',
+            'South Korea': 'S. Korea',
+            'Papua New Guinea': 'PNG',
+            'Solomon Islands': 'Solomon Is.'
         }
         
-        # Pre-process the text
+        # Find which countries are mentioned in the text
+        mentioned_countries = []
         text_lower = text.lower()
         
-        # Initialize sentiment results
+        for country in countries:
+            if country.lower() in text_lower:
+                # Use simplified name if available
+                country_name = country_mapping.get(country, country)
+                mentioned_countries.append(country_name)
+        
         sentiment_results = {}
         
-        # Analyze overall sentiment
-        try:
-            blob = TextBlob(text)
-            overall_sentiment = blob.sentiment.polarity
-        except Exception as e:
-            logger.warning(f"Error analyzing overall sentiment: {str(e)}")
-            overall_sentiment = 0  # Neutral fallback
-        
-        # For each entity, analyze sentences containing references to it
-        for entity, terms in key_entities.items():
-            try:
-                entity_sentences = []
+        # Only analyze sentiment for countries that are mentioned
+        for country in set(mentioned_countries):
+            # Find sentences mentioning this country
+            sentences = re.split(r'(?<=[.!?])\s+', text)
+            country_sentences = []
+            
+            for sentence in sentences:
+                # Check for country or related terms
+                country_lower = country.lower()
+                sentence_lower = sentence.lower()
                 
-                # Split text into sentences
+                # Get the original country name from mapping if needed
+                original_countries = [k for k, v in country_mapping.items() if v == country]
+                check_names = [country_lower] + [c.lower() for c in original_countries]
+                
+                if any(name in sentence_lower for name in check_names):
+                    country_sentences.append(sentence)
+            
+            # Only calculate sentiment if we found sentences
+            if country_sentences:
                 try:
-                    sentences = re.split(r'(?<=[.!?])\s+', text)
+                    # Calculate sentiment for this country
+                    scores = []
+                    for sentence in country_sentences:
+                        blob = TextBlob(sentence)
+                        scores.append(blob.sentiment.polarity)
+                    
+                    # Average sentiment
+                    if scores:
+                        sentiment_results[country] = round(sum(scores) / len(scores), 2)
                 except Exception as e:
-                    logger.warning(f"Error splitting sentences: {str(e)}")
-                    sentences = [text]  # Fallback to whole text
-                
-                # Find sentences containing entity terms
-                for sentence in sentences:
-                    sentence_lower = sentence.lower()
-                    if any(term.lower() in sentence_lower for term in terms):
-                        entity_sentences.append(sentence)
-                
-                # If entity is mentioned, analyze sentiment for those sentences
-                if entity_sentences:
-                    # Calculate average sentiment
-                    try:
-                        entity_sentiment_values = []
-                        for sentence in entity_sentences:
-                            try:
-                                sentence_blob = TextBlob(sentence)
-                                entity_sentiment_values.append(sentence_blob.sentiment.polarity)
-                            except Exception as sentence_error:
-                                logger.warning(f"Error analyzing sentence sentiment: {str(sentence_error)}")
-                                # Skip this sentence
-                                continue
-                                
-                        # Only add result if we have valid sentiment values
-                        if entity_sentiment_values:
-                            entity_sentiment = sum(entity_sentiment_values) / len(entity_sentiment_values)
-                            sentiment_results[entity] = round(entity_sentiment, 2)
-                    except Exception as e:
-                        logger.warning(f"Error calculating sentiment for {entity}: {str(e)}")
-            except Exception as entity_error:
-                logger.warning(f"Error processing entity {entity}: {str(entity_error)}")
-                continue
+                    logger.warning(f"Error calculating sentiment for {country}: {str(e)}")
         
-        # Handle case where no entities were found
+        # If no country-specific sentiments found, calculate overall sentiment
         if not sentiment_results:
-            sentiment_results['Overall'] = round(overall_sentiment, 2)
+            try:
+                blob = TextBlob(text)
+                overall_sentiment = blob.sentiment.polarity
+                sentiment_results['Overall'] = round(overall_sentiment, 2)
+            except Exception as e:
+                logger.warning(f"Error analyzing overall sentiment: {str(e)}")
         
         return sentiment_results
         
