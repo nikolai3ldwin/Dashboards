@@ -9,8 +9,8 @@ from PIL import Image
 import hashlib
 import re
 
-# Use our advanced NER functionality
-from utils.advanced_ner import analyze_article_content
+# Use our simplified NER functionality
+from utils.simplified_ner import analyze_article_content
 
 def display_article_with_ner(article, image):
     """
