@@ -285,10 +285,10 @@ def apply_theme():
                 color: #FFFFFF !important;
             }
             
-            /* Buttons */
+            /* Buttons - Fixed button text styling */
             button, .stButton>button {
-                background-color: #FFC107 !important;
-                color: #000000 !important;  /* Black text for yellow buttons */
+                background-color: #4F8BF9 !important;
+                color: white !important;
                 border: none !important;
                 border-radius: 5px !important;
                 padding: 8px 16px !important;
@@ -298,46 +298,43 @@ def apply_theme():
                 box-shadow: 0 2px 5px rgba(0,0,0,0.3) !important;
             }
             button:hover, .stButton>button:hover {
-                background-color: #FFCA28 !important;
+                background-color: #2D68D8 !important;
             }
             
-            /* Specifically target the yellow navigation buttons in sidebar */
-            .sidebar .stButton>button {
-                background-color: #FFC107 !important;
-                color: #000000 !important;
-                font-weight: 600 !important;
-                border: none !important;
-            }
-
-            /* Target "Select All" and "Clear All" buttons */
-            .sidebar [data-testid="baseButton-secondary"] {
-                background-color: #FFC107 !important;
-                color: #000000 !important;
-                font-weight: 600 !important;
-            }
-
-            /* Make sure all yellow buttons have black text */
-            .sidebar button,
-            .sidebar .stButton button,
-            [data-baseweb="button"],
-            .sidebar [data-testid="StyledFullScreenButton"] {
-                color: #000000 !important;
-            }
-
-            /* Fix dashboard navigation buttons specifically */
+            /* Yellow buttons with black text - with high specificity */
+            .sidebar .stButton>button,
+            div[data-testid="stSidebar"] .stButton>button,
+            div[data-testid="stSidebar"] button,
+            .sidebar button[kind="secondary"],
+            .sidebar [data-testid="baseButton-secondary"],
             .sidebar [data-testid="element-container"] button {
                 background-color: #FFC107 !important;
                 color: #000000 !important;
                 font-weight: 600 !important;
             }
+
+            /* Extra specificity for yellow buttons */
+            div[data-testid="stSidebar"] [data-testid="stButton"] > button {
+                background-color: #FFC107 !important;
+                color: #000000 !important;
+                font-weight: 600 !important;
+            }
             
-            /* Sidebar styling */
-            .sidebar .sidebar-content {
+            /* Sidebar styling - improved */
+            div[data-testid="stSidebar"] {
                 background-color: #1E1E1E !important;
             }
-            .sidebar-content p, .sidebar-content h1, .sidebar-content h2, 
-            .sidebar-content h3, .sidebar-content h4, .sidebar-content h5, 
-            .sidebar-content h6, .sidebar-content span, .sidebar-content label {
+            
+            div[data-testid="stSidebar"] p, 
+            div[data-testid="stSidebar"] h1, 
+            div[data-testid="stSidebar"] h2, 
+            div[data-testid="stSidebar"] h3, 
+            div[data-testid="stSidebar"] h4, 
+            div[data-testid="stSidebar"] h5, 
+            div[data-testid="stSidebar"] h6, 
+            div[data-testid="stSidebar"] span, 
+            div[data-testid="stSidebar"] label,
+            div[data-testid="stSidebar"] div {
                 color: #E0E0E0 !important;
             }
             
@@ -395,6 +392,20 @@ def apply_theme():
             .stProgress .st-bo {
                 background-color: #FFC107 !important;
                 color: #000000 !important;
+            }
+            
+            /* Additional selectors for sidebar text */
+            div[data-testid="stSidebar"] .stCheckbox label,
+            div[data-testid="stSidebar"] .stCheckbox label span,
+            div[data-testid="stSidebar"] .stRadio label,
+            div[data-testid="stSidebar"] .stRadio label span {
+                color: #E0E0E0 !important;
+            }
+            
+            /* Fix for checkbox labels in dark mode */
+            div[data-testid="stSidebar"] label span p {
+                color: #E0E0E0 !important;
+                opacity: 1 !important;
             }
         </style>
         """
