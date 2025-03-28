@@ -36,6 +36,8 @@ def toggle_theme():
         # Ensure theme is always set to something valid
         st.session_state.theme = 'light'
 
+# Updates for the theme.py file
+
 def apply_theme():
     """
     Apply the current theme using custom CSS.
@@ -51,7 +53,8 @@ def apply_theme():
             }
             .stApp {
                 background-color: #FFFFFF;
-                max-width: 1200px;
+                /* Remove max-width to flex to page */
+                /* max-width: 1200px; */
                 margin: 0 auto;
             }
             .css-1v3fvcr {
@@ -127,6 +130,15 @@ def apply_theme():
             button:hover, .stButton>button:hover {
                 background-color: #2D68D8;
             }
+            /* Sidebar styling */
+            .sidebar .sidebar-content {
+                background-color: #F5F5F5;
+            }
+            .sidebar-content p, .sidebar-content h1, .sidebar-content h2, 
+            .sidebar-content h3, .sidebar-content h4, .sidebar-content h5, 
+            .sidebar-content h6, .sidebar-content span {
+                color: #31333F !important;
+            }
             /* Sidebar toggle indicator */
             [data-testid="collapsedControl"] {
                 background-color: #4F8BF9;
@@ -151,7 +163,8 @@ def apply_theme():
             }
             .stApp {
                 background-color: #121212 !important;
-                max-width: 1200px;
+                /* Remove max-width to flex to page */
+                /* max-width: 1200px; */
                 margin: 0 auto;
             }
             .css-1v3fvcr {
@@ -254,7 +267,7 @@ def apply_theme():
             /* Buttons */
             button, .stButton>button {
                 background-color: #FFC107 !important;
-                color: #000000 !important;
+                color: #000000 !important;  /* Black text for yellow buttons */
                 border: none !important;
                 border-radius: 5px !important;
                 padding: 8px 16px !important;
@@ -270,6 +283,11 @@ def apply_theme():
             /* Sidebar styling */
             .sidebar .sidebar-content {
                 background-color: #1E1E1E !important;
+            }
+            .sidebar-content p, .sidebar-content h1, .sidebar-content h2, 
+            .sidebar-content h3, .sidebar-content h4, .sidebar-content h5, 
+            .sidebar-content h6, .sidebar-content span {
+                color: #E0E0E0 !important;
             }
             
             /* Expanders and other containers */
@@ -306,7 +324,7 @@ def apply_theme():
             /* Sidebar toggle indicator */
             [data-testid="collapsedControl"] {
                 background-color: #FFC107 !important;
-                color: #000000 !important;
+                color: #000000 !important;  /* Black text for yellow button */
                 border-radius: 50% !important;
                 width: 36px !important;
                 height: 36px !important;
@@ -314,6 +332,18 @@ def apply_theme():
                 align-items: center !important;
                 justify-content: center !important;
                 box-shadow: 0 2px 5px rgba(0,0,0,0.3) !important;
+            }
+            
+            /* Fix navigation buttons */
+            [data-testid="baseButton-primary"] {
+                background-color: #FFC107 !important;
+                color: #000000 !important;  /* Black text for yellow buttons */
+            }
+            
+            /* Fix any other yellow UI elements */
+            .stProgress .st-bo {
+                background-color: #FFC107 !important;
+                color: #000000 !important;
             }
         </style>
         """
