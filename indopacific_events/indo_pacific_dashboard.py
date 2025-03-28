@@ -165,6 +165,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger("indo_pacific_dashboard")
 
+# Initialize modules_loaded variable BEFORE it's used
+modules_loaded = False
+
 # Import utility modules with error handling
 try:
     # Import RSS feed parser
@@ -209,13 +212,13 @@ try:
         logger.warning("Report generator component not available")
         
     logger.info("Successfully imported all modules")
+    modules_loaded = True  # Set to True only if all imports succeed
 except Exception as e:
     logger.error(f"Error importing modules: {str(e)}")
     st.error(f"Error loading required modules: {str(e)}")
     st.info("Please ensure all required modules are installed and accessible.")
     modules_loaded = False
-else:
-    modules_loaded = True
+    report_generator_available = False
 
 # Configure Streamlit page
 st.set_page_config(
@@ -947,3 +950,164 @@ def settings_view():
     if st.button("Clear Cache"):
         st.cache_data.clear()
         st.success("Cache cleared successfully!")
+    
+    with col1:
+        st.metric("Python Version", sys.version.split()[0])
+        st.metric("Streamlit Version", st.__version__)
+    
+    with col2:
+        st.metric("Last Updated", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        st.metric("Articles in Cache", len(st.session_state.get('articles_data', [])))
+    
+    # View logs option
+    with st.expander("View Error Logs"):
+        if os.path.exists(log_file):
+            with open(log_file, 'r') as f:
+                log_content = f.read()
+            st.text_area("Log Content", log_content, height=300)
+            
+            # Download logs button
+            st.download_button(
+                label="Download Logs",
+                data=log_content,
+                file_name=f"dashboard_logs_{datetime.datetime.now().strftime('%Y-%m-%d')}.log",
+                mime="text/plain"
+            )
+        else:
+            st.info("No log file found.")
+    
+    # Clear cache button
+    if st.button("Clear Cache"):
+        st.cache_data.clear()
+        st.success("Cache cleared successfully!")
+def about_view():
+    """About page view"""
+    st.title("About Indo-Pacific Dashboard")
+    
+    st.markdown("""
+    ## Indo-Pacific Current Events Dashboard
+    
+    A comprehensive real-time dashboard for monitoring and analyzing current events in the Indo-Pacific region. 
+    This tool uses RSS feeds from reputable sources to present categorized, filtered, and prioritized news 
+    with importance ratings and sentiment analysis.
+
+    ### Features
+
+    - **Multi-source News Aggregation**: Collects and consolidates news from multiple RSS feeds.
+    - **Advanced Filtering**: Filter by country, topic, importance, and sentiment.
+    - **Importance Rating**: Automatically rates article importance using keyword-based weighting.
+    - **Sentiment Analysis**: Analyzes sentiment toward key regional actors.
+    - **Categorical Analysis**: Classifies content into key regional topics:
+      - Political & Diplomatic
+      - Military & Defense
+      - Civil Affairs
+      - Drug Proliferation
+      - CWMD (Counter Weapons of Mass Destruction)
+      - Business & Economic
+      - Regional Specific (New Caledonia, Wallis and Futuna, etc.)
+    - **Search Functionality**: Find specific events and topics across all sources.
+    - **Visual Presentation**: Clean, responsive interface with images and importance indicators.
+    
+    ### Acknowledgments
+    
+    - Streamlit for the fantastic web application framework
+    - All the news sources that provide RSS feeds for their content
+    - NLTK and TextBlob for text processing
+    
+    ### Version
+    
+    Current Version: 1.0.0
+    
+    """)
+    
+    # Show license
+    with st.expander("License"):
+        st.markdown("""
+        ### MIT License
+
+        Copyright (c) 2025 Indo-Pacific Dashboard
+
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        """)
+
+def main():
+    """Main function to run the dashboard"""
+    # Apply theme
+    if modules_loaded and 'theme' in st.session_state:
+        try:
+            apply_theme()
+        except Exception as e:
+            logger.error(f"Error applying theme: {str(e)}")
+    
+    # Add navigation in sidebar
+    st.sidebar.title("Indo-Pacific Dashboard")
+    
+    # Navigation buttons
+    nav_options = [
+        ("🏠 Dashboard", "dashboard"),
+        ("📊 Analytics", "analytics"),
+        ("📑 Reports", "reports"),
+        ("⚙️ Settings", "settings"),
+        ("ℹ️ About", "about")
+    ]
+    
+    st.sidebar.markdown("### Navigation")
+    
+    for label, view in nav_options:
+        if st.sidebar.button(label, key=f"nav_{view}"):
+            change_view(view)
+    
+    # Add theme toggle
+    current_theme = st.session_state.get('theme', 'light')
+    theme_icon = "🌙" if current_theme == 'light' else "☀️"
+    theme_label = f"{theme_icon} {'Dark' if current_theme == 'light' else 'Light'} Mode"
+    
+    if st.sidebar.button(theme_label, key="theme_toggle"):
+        st.session_state.theme = 'dark' if current_theme == 'light' else 'light'
+        st.rerun()
+    
+    # Add footer to sidebar
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("© 2025 Indo-Pacific Dashboard")
+    st.sidebar.markdown("Version 1.0.0")
+    
+    # Display appropriate view based on session state
+    current_view = st.session_state.get('current_view', 'dashboard')
+    
+    try:
+        if current_view == 'dashboard':
+            dashboard_view()
+        elif current_view == 'reports':
+            reports_view()
+        elif current_view == 'analytics':
+            analytics_view()
+        elif current_view == 'settings':
+            settings_view()
+        elif current_view == 'about':
+            about_view()
+        else:
+            st.error(f"Unknown view: {current_view}")
+            dashboard_view()  # Fallback to dashboard
+    except Exception as e:
+        logger.error(f"Error rendering view {current_view}: {str(e)}")
+        st.error(f"Error rendering view: {str(e)}")
+        st.info("Please check the logs for details or try refreshing the page.")
+
+if __name__ == "__main__":
+    main()
