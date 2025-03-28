@@ -301,75 +301,109 @@ def apply_theme():
                 background-color: #2D68D8 !important;
             }
             
-            /* Yellow buttons with black text - with high specificity */
-            .sidebar .stButton>button,
-            div[data-testid="stSidebar"] .stButton>button,
-            div[data-testid="stSidebar"] button,
-            .sidebar button[kind="secondary"],
-            .sidebar [data-testid="baseButton-secondary"],
-            .sidebar [data-testid="element-container"] button {
-                background-color: #FFC107 !important;
-                color: #000000 !important;
-                font-weight: 600 !important;
-            }
-
-            /* Extra specificity for yellow buttons */
-            div[data-testid="stSidebar"] [data-testid="stButton"] > button {
-                background-color: #FFC107 !important;
-                color: #000000 !important;
-                font-weight: 600 !important;
+            /* Extremely aggressive sidebar styling for dark mode */
+            
+            /* First - set all elements in sidebar to have proper color and opacity */
+            div[data-testid="stSidebar"] * {
+                color: #FFFFFF !important;
+                opacity: 1 !important;
             }
             
-            /* Sidebar styling - improved */
-            div[data-testid="stSidebar"] {
+            /* Make sure the sidebar background is dark */
+            div[data-testid="stSidebar"], 
+            section[data-testid="stSidebar"] {
                 background-color: #1E1E1E !important;
             }
             
-            div[data-testid="stSidebar"] p, 
+            /* Fix Streamlit's internal opacity styling for sidebar */
+            div[data-testid="stSidebar"] [data-testid="stMarkdown"] p,
+            div[data-testid="stSidebar"] [data-testid="stMarkdown"] span,
             div[data-testid="stSidebar"] h1, 
-            div[data-testid="stSidebar"] h2, 
+            div[data-testid="stSidebar"] h2,
             div[data-testid="stSidebar"] h3, 
-            div[data-testid="stSidebar"] h4, 
+            div[data-testid="stSidebar"] h4,
             div[data-testid="stSidebar"] h5, 
-            div[data-testid="stSidebar"] h6, 
-            div[data-testid="stSidebar"] span, 
+            div[data-testid="stSidebar"] h6,
+            div[data-testid="stSidebar"] a,
+            div[data-testid="stSidebar"] span,
             div[data-testid="stSidebar"] label,
-            div[data-testid="stSidebar"] div {
-                color: #E0E0E0 !important;
-            }
-            
-            /* Expanders and other containers */
-            .streamlit-expanderHeader {
-                background-color: #2D2D2D !important;
+            div[data-testid="stSidebar"] .streamlit-expanderHeader,
+            div[data-testid="stSidebar"] .streamlit-expanderContent {
                 color: #FFFFFF !important;
+                opacity: 1 !important;
             }
             
-            /* Sliders and progress bars */
-            .stSlider>div>div {
-                background-color: #3D3D3D !important;
-            }
-            
-            /* DataFrames and tables */
-            .stDataFrame {
+            /* Very specifically target Streamlit's dropdown items */
+            div[data-testid="stSidebar"] [data-testid="stExpander"] div p,
+            div[data-testid="stSidebar"] .streamlit-expanderContent p,
+            div[data-testid="stSidebar"] [data-testid="stVerticalBlock"] div,
+            div[data-testid="stSidebar"] [data-testid="stVerticalBlock"] p {
                 color: #FFFFFF !important;
-            }
-            .stDataFrame [data-testid="stTable"] {
-                color: #FFFFFF !important;
+                opacity: 1 !important;
             }
             
-            /* Pagination controls */
-            .pagination {
+            /* Target Streamlit's checkbox elements */
+            div[data-testid="stSidebar"] .stCheckbox label span p,
+            div[data-testid="stSidebar"] [role="checkbox"],
+            div[data-testid="stSidebar"] [data-testid="stForm"] label span {
                 color: #FFFFFF !important;
-                font-weight: 500 !important;
+                opacity: 1 !important;
             }
             
-            /* Metrics */
-            [data-testid="stMetricValue"] {
+            /* Special handling for dropdown selection text */
+            div[data-testid="stSidebar"] div[role="listbox"] div[role="option"] span,
+            div[data-testid="stSidebar"] div[role="listbox"] div[role="option"] div,
+            div[data-testid="stSidebar"] div[role="combobox"] span,
+            div[data-testid="stSidebar"] div[role="combobox"] div {
                 color: #FFFFFF !important;
-                font-weight: bold !important;
+                opacity: 1 !important;
             }
             
-            /* Sidebar toggle indicator */
+            /* Target selectbox options */
+            div[data-testid="stSidebar"] .stSelectbox div, 
+            div[data-testid="stSidebar"] .stSelectbox span,
+            div[data-testid="stSidebar"] .stSelectbox label {
+                color: #FFFFFF !important;
+                opacity: 1 !important;
+            }
+            
+            /* Restore button text to black for yellow buttons in sidebar */
+            div[data-testid="stSidebar"] button,
+            div[data-testid="stSidebar"] .stButton > button {
+                background-color: #FFC107 !important;
+                color: #000000 !important;
+                font-weight: 600 !important;
+            }
+            
+            /* Fix navigation buttons specifically */
+            [data-testid="baseButton-primary"] {
+                background-color: #FFC107 !important;
+                color: #000000 !important;  /* Black text for yellow buttons */
+            }
+            
+            /* Fix any other yellow UI elements */
+            .stProgress .st-bo {
+                background-color: #FFC107 !important;
+                color: #000000 !important;
+            }
+            
+            /* Fix for expandable headers */
+            div[data-testid="stSidebar"] .streamlit-expanderHeader svg,
+            div[data-testid="stSidebar"] [data-testid="stExpander"] span {
+                color: #FFFFFF !important;
+                fill: #FFFFFF !important;
+                opacity: 1 !important;
+            }
+            
+            /* Force opacity on specific elements known to be problematic */
+            div[data-testid="stSidebar"] div[data-baseweb="select"] div,
+            div[data-testid="stSidebar"] div[data-baseweb="select"] span,
+            div[data-testid="stSidebar"] div[data-baseweb="select"] svg,
+            div[data-testid="stSidebar"] div[data-baseweb="select"] path {
+                opacity: 1 !important;
+            }
+            
+            /* Target sidebar toggle indicator */
             [data-testid="collapsedControl"] {
                 background-color: #FFC107 !important;
                 color: #000000 !important;  /* Black text for yellow button */
@@ -382,51 +416,25 @@ def apply_theme():
                 box-shadow: 0 2px 5px rgba(0,0,0,0.3) !important;
             }
             
-            /* Fix navigation buttons */
-            [data-testid="baseButton-primary"] {
-                background-color: #FFC107 !important;
-                color: #000000 !important;  /* Black text for yellow buttons */
-            }
-            
-            /* Fix any other yellow UI elements */
-            .stProgress .st-bo {
-                background-color: #FFC107 !important;
-                color: #000000 !important;
-            }
-            
-            /* Additional selectors for sidebar text */
-            div[data-testid="stSidebar"] .stCheckbox label,
-            div[data-testid="stSidebar"] .stCheckbox label span,
-            div[data-testid="stSidebar"] .stRadio label,
-            div[data-testid="stSidebar"] .stRadio label span {
-                color: #E0E0E0 !important;
+            /* NEW addition: Target the dropdown option text specially */
+            div[data-testid="stExpander"] div label span p {
+                color: white !important;
                 opacity: 1 !important;
             }
             
-            /* Fix for all sidebar labels and text in dark mode */
-            div[data-testid="stSidebar"] * {
-                color: #E0E0E0 !important;
+            /* Fix for checkbox labels specifically */
+            div[data-testid="stSidebar"] .stCheckbox label span[aria-hidden="true"],
+            div[data-testid="stSidebar"] .stCheckbox label span p {
+                color: white !important;
+                opacity: 1 !important;
             }
             
-            /* Restore button text to black for yellow buttons in sidebar */
-            div[data-testid="stSidebar"] button,
-            div[data-testid="stSidebar"] .stButton > button {
-                color: #000000 !important;
-            }
-            
-            /* Fix opacity issues in sidebar */
+            /* Force fix for label opacities */
             div[data-testid="stSidebar"] label,
-            div[data-testid="stSidebar"] p,
-            div[data-testid="stSidebar"] span,
-            div[data-testid="stSidebar"] div {
-                opacity: 1 !important;
-            }
-            
-            /* Target the expandable sections in sidebar */
-            div[data-testid="stSidebar"] .streamlit-expanderHeader,
-            div[data-testid="stSidebar"] .streamlit-expanderHeader span p,
-            div[data-testid="stSidebar"] [data-testid="stExpander"] div {
-                color: #E0E0E0 !important;
+            div[data-testid="stSidebar"] label span,
+            div[data-testid="stSidebar"] label span p,
+            div[data-testid="stSidebar"] section div div label {
+                color: white !important;
                 opacity: 1 !important;
             }
         </style>
