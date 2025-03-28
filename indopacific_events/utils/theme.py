@@ -400,10 +400,32 @@ def apply_theme():
             div[data-testid="stSidebar"] .stRadio label,
             div[data-testid="stSidebar"] .stRadio label span {
                 color: #E0E0E0 !important;
+                opacity: 1 !important;
             }
             
-            /* Fix for checkbox labels in dark mode */
-            div[data-testid="stSidebar"] label span p {
+            /* Fix for all sidebar labels and text in dark mode */
+            div[data-testid="stSidebar"] * {
+                color: #E0E0E0 !important;
+            }
+            
+            /* Restore button text to black for yellow buttons in sidebar */
+            div[data-testid="stSidebar"] button,
+            div[data-testid="stSidebar"] .stButton > button {
+                color: #000000 !important;
+            }
+            
+            /* Fix opacity issues in sidebar */
+            div[data-testid="stSidebar"] label,
+            div[data-testid="stSidebar"] p,
+            div[data-testid="stSidebar"] span,
+            div[data-testid="stSidebar"] div {
+                opacity: 1 !important;
+            }
+            
+            /* Target the expandable sections in sidebar */
+            div[data-testid="stSidebar"] .streamlit-expanderHeader,
+            div[data-testid="stSidebar"] .streamlit-expanderHeader span p,
+            div[data-testid="stSidebar"] [data-testid="stExpander"] div {
                 color: #E0E0E0 !important;
                 opacity: 1 !important;
             }
