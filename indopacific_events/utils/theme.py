@@ -172,6 +172,19 @@ def apply_theme():
                 color: #000000;
                 font-weight: 600;
             }
+            
+            /* Top header bar styling for light mode */
+            header[data-testid="stHeader"],
+            div[data-testid="stToolbar"] {
+                background-color: #F8F8F8;
+                border-bottom: 1px solid #EEEEEE;
+            }
+            
+            header[data-testid="stHeader"] button,
+            div[data-testid="stToolbar"] button {
+                background-color: #4F8BF9;
+                color: white;
+            }
         </style>
         """
         
@@ -436,6 +449,25 @@ def apply_theme():
             div[data-testid="stSidebar"] section div div label {
                 color: white !important;
                 opacity: 1 !important;
+            }
+            
+            /* Top header bar styling for dark mode */
+            header[data-testid="stHeader"],
+            div[data-testid="stToolbar"] {
+                background-color: #1E1E1E !important;
+                border-bottom: 1px solid #333333 !important;
+            }
+            
+            header[data-testid="stHeader"] button,
+            div[data-testid="stToolbar"] button,
+            div[data-testid="stDecoration"] {
+                background-color: #FFC107 !important;
+                color: #000000 !important;
+            }
+            
+            /* Style for the header title if present */
+            div[data-testid="stDecoration"] h1 {
+                color: white !important;
             }
         </style>
         """
