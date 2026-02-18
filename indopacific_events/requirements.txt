@@ -1,4 +1,8 @@
 # requirements.txt
+
+Needed as of Python 3.12
+setuptools
+
 # Core dependencies with pinned versions for stability
 streamlit==1.31.0  # Main web framework
 feedparser==6.0.10  # RSS feed parser
@@ -48,3 +52,4 @@ packaging>=20.0  # Required by various packages
 # spacy==3.6.1 # to address a C++ Python compilation error
 # thinc==8.2.1 # to address a C++ Python compilation error
 # networkx==3.1
+
