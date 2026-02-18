@@ -7,11 +7,12 @@ setuptools
 streamlit==1.31.0  # Main web framework
 feedparser==6.0.10  # RSS feed parser
 requests==2.31.0  # HTTP requests
-pillow==10.0.0  # Image processing
+pillow>=10.2.0  # Image processing
 beautifulsoup4==4.12.2  # HTML parsing
 nltk==3.8.1  # Natural language processing
 textblob==0.17.1  # Sentiment analysis
-pandas==2.0.3  # Data handling
+pandas>=2.2.0  # Data handling
+numpy>=1.26.0  # Required by newer Pandas
 
 # Data visualization
 matplotlib==3.7.2
@@ -52,5 +53,6 @@ packaging>=20.0  # Required by various packages
 # spacy==3.6.1 # to address a C++ Python compilation error
 # thinc==8.2.1 # to address a C++ Python compilation error
 # networkx==3.1
+
 
 
